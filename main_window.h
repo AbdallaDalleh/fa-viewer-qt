@@ -45,7 +45,7 @@ private slots:
 
     void on_cbID_currentIndexChanged(const QString &arg1);
 
-    void on_btnConnect_clicked();
+    void on_cbShow_currentIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;

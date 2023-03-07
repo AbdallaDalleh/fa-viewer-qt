@@ -1,6 +1,8 @@
 #include "main_window.h"
 #include "ui_main_window.h"
 
+#pragma pack(4)
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -29,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->timer = new QTimer(this);
     this->timer->setInterval(1000);
     QObject::connect(this->timer, &QTimer::timeout, this, &MainWindow::pollServer);
+    QObject::connect(ui->btnConnect, &QPushButton::clicked, this, &MainWindow::reconnectToServer);
 
     QFile file(":/fa-config.json");
     if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -53,24 +56,13 @@ MainWindow::MainWindow(QWidget *parent)
 
         ui->cbCells->addItem("Cell " + QString::number(cell));
         for(int bpm = 1; bpm <= this->bpms; bpm++) {
-            id = QString().sprintf(this->format.toStdString().c_str(), cell, currentID, bpm);
+            id = QString().asprintf(this->format.toStdString().c_str(), cell, currentID, bpm);
             this->idsMap.insert(id, currentID++);
         }
     }
 
     ui->cbCells->setCurrentIndex(1);
-    on_btnConnect_clicked();
-//    this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-//    srv.sin_port = htons(8888);
-//    srv.sin_family = AF_INET;
-//    srv.sin_addr.s_addr = inet_addr("10.4.1.22");
-//    ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
-//    write(sock, "S1\n", 3);
-
-//    char c;
-//    read(sock, &c, 1);
-
-//    this->timer->start();
+    reconnectToServer();
 }
 
 MainWindow::~MainWindow()
@@ -118,7 +110,10 @@ void MainWindow::pollServer()
     this->x_series->replace(xData);
     this->y_series->replace(yData);
     chart->axes(Qt::Horizontal).first()->setRange(0, size / 8 / 10);
-    chart->axes(Qt::Vertical).first()->setRange(min, max);
+    if(min == 0 && max == std::numeric_limits<float>::min())
+        chart->axes(Qt::Vertical).first()->setRange(-1000, 1000);
+    else
+        chart->axes(Qt::Vertical).first()->setRange(min, max);
     ui->plot->update();
 
     delete[] data;
@@ -130,7 +125,7 @@ void MainWindow::on_cbCells_currentIndexChanged(int index)
 
     ui->cbID->clear();
     if(index > 0) {
-        item = QString().sprintf("SRC%02d", index);
+        item = QString().asprintf("SRC%02d", index);
         for(QString key : this->idsMap.keys()) {
             if(key.startsWith(item))
                 ui->cbID->addItem(key);
@@ -146,20 +141,35 @@ void MainWindow::on_cbID_currentIndexChanged(const QString &arg1)
     this->message = "S" + QString::number(currentID) + "\n";
     this->timer->stop();
     ::close(this->sock);
-    on_btnConnect_clicked();
+    reconnectToServer();
 }
 
-void MainWindow::on_btnConnect_clicked()
+void MainWindow::reconnectToServer()
 {
+    char c;
+
     this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     srv.sin_port = htons(8888);
     srv.sin_family = AF_INET;
     srv.sin_addr.s_addr = inet_addr("10.4.1.22");
     ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
-    std::cout << strerror(errno) << std::endl;
-    write(sock, message.toStdString().c_str(), message.length());
-
-    char c;
-    read(sock, &c, 1);
+    ::write(sock, message.toStdString().c_str(), message.length());
+    ::read(sock, &c, 1);
     this->timer->start();
+}
+
+void MainWindow::on_cbShow_currentIndexChanged(int index)
+{
+    if(index == 0) {
+        x_series->setVisible(true);
+        y_series->setVisible(true);
+    }
+    else if(index == 1) {
+        x_series->setVisible(true);
+        y_series->setVisible(false);
+    }
+    else {
+        x_series->setVisible(false);
+        y_series->setVisible(true);
+    }
 }
