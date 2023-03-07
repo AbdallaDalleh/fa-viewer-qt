@@ -6,17 +6,326 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>801</width>
+    <height>591</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,0">
+    <item>
      <widget class="QChartView" name="plot" native="true"/>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QComboBox" name="cbCells">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>90</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>Other</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cbID">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>210</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cbShow">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>110</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>Show X&amp;Y</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Show X</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Show Y</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>57</width>
+          <height>27</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Timebase</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cbTime">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>80</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="currentIndex">
+         <number>3</number>
+        </property>
+        <item>
+         <property name="text">
+          <string>100 ms</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>250 ms</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>500 ms</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>1 s</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>2.5 s</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>5 s</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>10 s</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>25 s</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>50 s</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cbSignal">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>110</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>Raw Signal</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>FFT</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>FFT (log f)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Integrated</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QPushButton" name="btnConnect">
+        <property name="text">
+         <string>Reconnect</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>557</width>
+          <height>27</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>130</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Diff. Decimation</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cbDecimation">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>80</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>1:1</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>100:1</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
