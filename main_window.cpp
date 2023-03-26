@@ -62,6 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     ui->cbCells->setCurrentIndex(1);
+    ui->cbTime->setCurrentIndex(3);
     reconnectToServer();
 }
 
@@ -83,16 +84,13 @@ void MainWindow::pollServer()
     QVector<QPointF> xData;
     QVector<QPointF> yData;
 
-    int samples = 10000;
-    int bufferSize = samples * 2 * sizeof(float);
     data = new char[bufferSize];
-
     this->x_series->clear();
     this->y_series->clear();
-
     max = std::numeric_limits<float>::min();
     min = std::numeric_limits<float>::max();
-    size = read(sock, data, bufferSize);
+
+    size = recv(sock, data, bufferSize, MSG_WAITALL);
     for(i = 0; i < size; i += 8) {
         memcpy(&raw_x, data + i, sizeof(int32_t));
         memcpy(&raw_y, data + i + 4, sizeof(int32_t));
@@ -172,4 +170,26 @@ void MainWindow::on_cbShow_currentIndexChanged(int index)
         x_series->setVisible(false);
         y_series->setVisible(true);
     }
+}
+
+void MainWindow::on_cbTime_currentIndexChanged(int index)
+{
+    QString item;
+    QStringList items;
+
+    Q_UNUSED(index);
+    item = ui->cbTime->currentText();
+    items = item.split(" ");
+    if(items[1] == "ms") {
+        // The 10 is equal to 10000/1000 (Convert to seconds and multiply by the FA rate 10KHz).
+        this->samples = items[0].toInt() * 10;
+        this->timerPeriod = items[0].toInt();
+    }
+    else {
+        this->samples = items[0].toInt() * 10000;
+        this->timerPeriod = items[0].toInt() * 1000;
+    }
+
+    this->bufferSize = this->samples * 2 * sizeof(float);
+    this->timer->setInterval(this->timerPeriod);
 }

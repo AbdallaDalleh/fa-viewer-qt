@@ -47,6 +47,8 @@ private slots:
 
     void on_cbShow_currentIndexChanged(int index);
 
+    void on_cbTime_currentIndexChanged(int index);
+
 private:
     Ui::MainWindow *ui;
 
@@ -69,5 +71,8 @@ private:
     int firstID;
     int ids;
     int port;
+    int samples;
+    int bufferSize;
+    int timerPeriod;
 };
 #endif // MAINWINDOW_H
