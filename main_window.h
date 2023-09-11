@@ -24,6 +24,8 @@ using std::endl;
 
 using namespace QT_CHARTS_NAMESPACE;
 
+#define MAX_BUFFER_SIZE (80000)
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE

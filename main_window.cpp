@@ -90,8 +90,19 @@ void MainWindow::pollServer()
     max = std::numeric_limits<float>::min();
     min = std::numeric_limits<float>::max();
 
-    size = recv(sock, data, bufferSize, MSG_WAITALL);
-    for(i = 0; i < size; i += 8) {
+    int buffer = bufferSize;
+    int ptr = 0;
+    if(buffer > MAX_BUFFER_SIZE) {
+        while(buffer > 0) {
+            size += recv(sock, data + ptr, buffer < MAX_BUFFER_SIZE ? buffer : MAX_BUFFER_SIZE, MSG_WAITALL);
+            buffer -= MAX_BUFFER_SIZE;
+            ptr += MAX_BUFFER_SIZE;
+        }
+    }
+    else
+        size += recv(sock, data, buffer, MSG_WAITALL);
+
+    for(i = 0; i < size && size > 27; i += 8) {
         memcpy(&raw_x, data + i, sizeof(int32_t));
         memcpy(&raw_y, data + i + 4, sizeof(int32_t));
 
@@ -107,7 +118,7 @@ void MainWindow::pollServer()
 
     this->x_series->replace(xData);
     this->y_series->replace(yData);
-    chart->axes(Qt::Horizontal).first()->setRange(0, size / 8 / 10);
+    chart->axes(Qt::Horizontal).first()->setRange(0, this->timerPeriod);
     if(min == 0 && max == std::numeric_limits<float>::min())
         chart->axes(Qt::Vertical).first()->setRange(-1000, 1000);
     else
@@ -186,8 +197,8 @@ void MainWindow::on_cbTime_currentIndexChanged(int index)
         this->timerPeriod = items[0].toInt();
     }
     else {
-        this->samples = items[0].toInt() * 10000;
-        this->timerPeriod = items[0].toInt() * 1000;
+        this->samples = items[0].toDouble() * 10000;
+        this->timerPeriod = items[0].toDouble() * 1000;
     }
 
     this->bufferSize = this->samples * 2 * sizeof(float);
