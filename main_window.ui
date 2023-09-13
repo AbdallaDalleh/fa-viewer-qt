@@ -269,6 +269,13 @@
        </spacer>
       </item>
       <item>
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Decimation</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QComboBox" name="cbDecimation">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">

@@ -57,8 +57,6 @@ private slots:
 
     void on_cbTime_currentIndexChanged(int index);
 
-    void on_cbSignal_currentIndexChanged(int index);
-
 private:
     Ui::MainWindow *ui;
 

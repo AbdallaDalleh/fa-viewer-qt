@@ -173,14 +173,45 @@ void MainWindow::pollServer()
         this->yLogAxis->show();
     }
     else {
+        float item_x;
+        float item_y;
+        float sum_x = 0;
+        float sum_y = 0;
+        int index;
+        int scale_x = 1;
         for(unsigned i = 0; i < qMin(data_x.size(), data_y.size()); i++) {
-            xData.push_back(QPointF(i, data_x[i]));
-            yData.push_back(QPointF(i, data_y[i]));
+            if(ui->cbDecimation->currentIndex() == 0) {
+                item_x = data_x[i];
+                item_y = data_y[i];
+                index = i;
+            }
+            else if(ui->cbDecimation->currentIndex() == 1) {
+                if(i == 0 || i % 100 != 0) {
+                    sum_x += data_x[i];
+                    sum_y += data_y[i];
+                    continue;
+                }
+                index = i / 100;
+                item_x = sum_x / 100.0;
+                item_y = sum_y / 100.0;
+                scale_x = 100;
+                sum_x = 0;
+                sum_y = 0;
+            }
+            else {
+                if(i == 0)
+                    continue;
+                index = i - 1;
+                item_x = data_x[i] - data_x[i - 1];
+                item_y = data_y[i] - data_y[i - 1];
+            }
 
-            max = qMax(data_x[i], max);
-            max = qMax(data_y[i], max);
-            min = qMin(data_x[i], min);
-            min = qMin(data_y[i], min);
+            xData.push_back(QPointF(index, item_x));
+            yData.push_back(QPointF(index, item_y));
+            max = qMax(item_x, max);
+            max = qMax(item_y, max);
+            min = qMin(item_x, min);
+            min = qMin(item_y, min);
         }
 
         for(auto series : this->chart->series()) {
@@ -191,7 +222,7 @@ void MainWindow::pollServer()
         }
 
         this->yAxis->setRange(min, max);
-        this->xAxis->setRange(0, this->samples);
+        this->xAxis->setRange(0, this->samples / scale_x);
         this->yLogAxis->hide();
         this->yAxis->show();
     }
