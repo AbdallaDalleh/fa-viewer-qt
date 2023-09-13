@@ -35,3 +35,5 @@ RESOURCES += \
 
 DISTFILES += \
     fa-config.json
+
+LIBS += -lopencv_core

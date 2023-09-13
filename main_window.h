@@ -7,11 +7,15 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QSplineSeries>
+#include <QtCharts/QLogValueAxis>
+#include <QtCharts/QValueAxis>
 #include <QtEndian>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
 
+#include <cstdio>
+#include <cmath>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -21,6 +25,8 @@
 #include <iostream>
 using std::cout;
 using std::endl;
+
+#include <opencv2/core/core.hpp>
 
 using namespace QT_CHARTS_NAMESPACE;
 
@@ -58,6 +64,9 @@ private:
     QChart* chart;
     QLineSeries* x_series;
     QLineSeries* y_series;
+    QValueAxis* xAxis;
+    QValueAxis* yAxis;
+    QLogValueAxis* yLogAxis;
     QMap<QString, int> idsMap;
     QString format;
     QString message;

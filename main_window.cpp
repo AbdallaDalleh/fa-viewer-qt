@@ -9,21 +9,38 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    chart = new QChart;
     x_series = new QLineSeries(this);
     y_series = new QLineSeries(this);
     x_series->setName("Horizontal");
     y_series->setName("Vertical");
     y_series->setPen(QPen(Qt::red));
 
-    chart->legend()->show();
+    this->xAxis = new QValueAxis;
+    this->xAxis->setTitleText("Samples");
+    this->xAxis->setTickCount(6);
+    this->xAxis->setLabelFormat("%d");
+
+    this->yAxis = new QValueAxis;
+    this->yAxis->setTitleText("Positions");
+
+    this->yLogAxis = new QLogValueAxis;
+    this->yLogAxis->setTitleText("Amplitudes");
+    this->yLogAxis->setBase(10);
+    this->yLogAxis->setMinorGridLineVisible(false);
+    this->yLogAxis->setLabelFormat("%g");
+
+    chart = new QChart;
     chart->addSeries(x_series);
     chart->addSeries(y_series);
-    chart->createDefaultAxes();
-    chart->axes(Qt::Horizontal).first()->setRange(0, 10000);
-    chart->axes(Qt::Horizontal).first()->setTitleText("Time (s)");
-    chart->axes(Qt::Vertical).first()->setRange(-1000, 1000);
-    chart->axes(Qt::Vertical).first()->setTitleText("Position (um)");
+    this->chart->addAxis(this->xAxis, Qt::AlignBottom);
+    this->chart->addAxis(this->yAxis, Qt::AlignLeft);
+    this->chart->addAxis(this->yLogAxis, Qt::AlignLeft);
+    this->x_series->attachAxis(this->xAxis);
+    this->x_series->attachAxis(this->yAxis);
+    this->y_series->attachAxis(this->xAxis);
+    this->y_series->attachAxis(this->yAxis);
+
+    chart->legend()->show();
 
     ui->plot->setChart(chart);
     ui->plot->setRenderHint(QPainter::Antialiasing);
@@ -83,6 +100,10 @@ void MainWindow::pollServer()
     char* data;
     QVector<QPointF> xData;
     QVector<QPointF> yData;
+    std::vector<float> fft_in_x;
+    std::vector<float> fft_in_y;
+    std::vector<float> fft_x;
+    std::vector<float> fft_y;
 
     data = new char[bufferSize];
     this->x_series->clear();
@@ -108,21 +129,87 @@ void MainWindow::pollServer()
 
         value_x = (raw_x) / 1000.0;
         value_y = (raw_y) / 1000.0;
-        xData.append(QPointF((int) (i / 8 / 10), value_x));
-        yData.append(QPointF((int) (i / 8 / 10), value_y));
+        xData.append(QPointF((int) (i / 8), value_x));
+        yData.append(QPointF((int) (i / 8), value_y));
+        fft_in_x.push_back(value_x);
+        fft_in_y.push_back(value_y);
         max = qMax(value_x, max);
         max = qMax(value_y, max);
         min = qMin(value_x, min);
         min = qMin(value_y, min);
     }
 
-    this->x_series->replace(xData);
-    this->y_series->replace(yData);
-    chart->axes(Qt::Horizontal).first()->setRange(0, this->timerPeriod);
-    if(min == 0 && max == std::numeric_limits<float>::min())
-        chart->axes(Qt::Vertical).first()->setRange(-1000, 1000);
-    else
-        chart->axes(Qt::Vertical).first()->setRange(min, max);
+    cout << min << endl;
+    cout << max << endl;
+
+    if(ui->cbSignal->currentIndex() > 0) {
+        if(min == 0 && max == std::numeric_limits<float>::min()) {
+            this->yAxis->setRange(-1000, 1000);
+            this->yLogAxis->setRange(-1000, 1000);
+            return;
+        }
+
+        cv::dft(fft_in_x, fft_in_x);
+        cv::dft(fft_in_y, fft_in_y);
+
+        fft_x.push_back(abs(fft_in_x[0]));
+        for(unsigned i = 1; i < fft_in_x.size() - 2; i += 2)
+            fft_x.push_back( sqrt( pow(fft_in_x[i], 2) + pow(fft_in_x[i+1], 2) ));
+
+        fft_y.push_back(abs(fft_in_y[0]));
+        for(unsigned i = 1; i < fft_in_y.size() - 2; i += 2)
+            fft_y.push_back( sqrt( pow(fft_in_y[i], 2) + pow(fft_in_y[i+1], 2) ));
+
+        for(int i = 0; i < (int)fft_x.size(); i++) {
+            xData[i].setY(fft_x[i]);
+            yData[i].setY(fft_y[i]);
+            max = qMax((float)xData[i].y(), max);
+            max = qMax((float)yData[i].y(), max);
+            min = qMin((float)xData[i].y(), min);
+            min = qMin((float)yData[i].y(), min);
+        }
+
+        this->x_series->replace(QVector<QPointF>(xData.begin(), xData.begin() + fft_x.size()));
+        this->y_series->replace(QVector<QPointF>(yData.begin(), yData.begin() + fft_y.size()));
+
+        if(this->x_series->attachedAxes().contains(this->yAxis))
+            this->x_series->detachAxis(this->yAxis);
+        if(this->y_series->attachedAxes().contains(this->yAxis))
+            this->y_series->detachAxis(this->yAxis);
+
+        if(!this->x_series->attachedAxes().contains(this->yLogAxis))
+            this->x_series->attachAxis(this->yLogAxis);
+        if(!this->y_series->attachedAxes().contains(this->yLogAxis))
+            this->y_series->attachAxis(this->yLogAxis);
+
+        this->xAxis->setRange(0, this->samples / 2);
+        this->yLogAxis->setRange(min, max);
+        this->yAxis->hide();
+        this->yLogAxis->show();
+    }
+    else {
+        this->x_series->replace(xData);
+        this->y_series->replace(yData);
+
+        if(this->x_series->attachedAxes().contains(this->yLogAxis))
+            this->x_series->detachAxis(this->yLogAxis);
+        if(this->y_series->attachedAxes().contains(this->yLogAxis))
+            this->y_series->detachAxis(this->yLogAxis);
+
+        if(!this->x_series->attachedAxes().contains(this->yAxis))
+            this->x_series->attachAxis(this->yAxis);
+        if(!this->y_series->attachedAxes().contains(this->yAxis))
+            this->y_series->attachAxis(this->yAxis);
+
+        if(min == 0 && max == std::numeric_limits<float>::min())
+            this->yAxis->setRange(-1000, 1000);
+        else
+            this->yAxis->setRange(min, max);
+
+        this->xAxis->setRange(0, this->samples);
+        this->yLogAxis->hide();
+        this->yAxis->show();
+    }
     ui->plot->update();
 
     delete[] data;
