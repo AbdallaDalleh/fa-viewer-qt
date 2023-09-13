@@ -100,8 +100,8 @@ void MainWindow::pollServer()
     char* data;
     QVector<QPointF> xData;
     QVector<QPointF> yData;
-    std::vector<float> fft_in_x;
-    std::vector<float> fft_in_y;
+    std::vector<float> data_x;
+    std::vector<float> data_y;
     std::vector<float> fft_x;
     std::vector<float> fft_y;
 
@@ -129,87 +129,74 @@ void MainWindow::pollServer()
 
         value_x = (raw_x) / 1000.0;
         value_y = (raw_y) / 1000.0;
-        xData.append(QPointF((int) (i / 8), value_x));
-        yData.append(QPointF((int) (i / 8), value_y));
-        fft_in_x.push_back(value_x);
-        fft_in_y.push_back(value_y);
-        max = qMax(value_x, max);
-        max = qMax(value_y, max);
-        min = qMin(value_x, min);
-        min = qMin(value_y, min);
+        data_x.push_back(value_x);
+        data_y.push_back(value_y);
     }
 
-    cout << min << endl;
-    cout << max << endl;
+    if(min == 0 && max == std::numeric_limits<float>::min()) {
+        this->yAxis->setRange(-1000, 1000);
+        this->yLogAxis->setRange(-1000, 1000);
+        return;
+    }
 
     if(ui->cbSignal->currentIndex() > 0) {
-        if(min == 0 && max == std::numeric_limits<float>::min()) {
-            this->yAxis->setRange(-1000, 1000);
-            this->yLogAxis->setRange(-1000, 1000);
-            return;
-        }
+        cv::dft(data_x, data_x);
+        cv::dft(data_y, data_y);
 
-        cv::dft(fft_in_x, fft_in_x);
-        cv::dft(fft_in_y, fft_in_y);
+        fft_x.push_back(abs(data_x[0]));
+        for(unsigned i = 1; i < data_x.size() - 2; i += 2)
+            fft_x.push_back( sqrt( pow(data_x[i], 2) + pow(data_x[i+1], 2) ));
 
-        fft_x.push_back(abs(fft_in_x[0]));
-        for(unsigned i = 1; i < fft_in_x.size() - 2; i += 2)
-            fft_x.push_back( sqrt( pow(fft_in_x[i], 2) + pow(fft_in_x[i+1], 2) ));
-
-        fft_y.push_back(abs(fft_in_y[0]));
-        for(unsigned i = 1; i < fft_in_y.size() - 2; i += 2)
-            fft_y.push_back( sqrt( pow(fft_in_y[i], 2) + pow(fft_in_y[i+1], 2) ));
+        fft_y.push_back(abs(data_y[0]));
+        for(unsigned i = 1; i < data_y.size() - 2; i += 2)
+            fft_y.push_back( sqrt( pow(data_y[i], 2) + pow(data_y[i+1], 2) ));
 
         for(int i = 0; i < (int)fft_x.size(); i++) {
-            xData[i].setY(fft_x[i]);
-            yData[i].setY(fft_y[i]);
-            max = qMax((float)xData[i].y(), max);
-            max = qMax((float)yData[i].y(), max);
-            min = qMin((float)xData[i].y(), min);
-            min = qMin((float)yData[i].y(), min);
+            xData.push_back(QPointF(i, fft_x[i]));
+            yData.push_back(QPointF(i, fft_y[i]));
+            max = qMax(fft_x[i], max);
+            max = qMax(fft_y[i], max);
+            min = qMin(fft_x[i], min);
+            min = qMin(fft_y[i], min);
         }
 
-        this->x_series->replace(QVector<QPointF>(xData.begin(), xData.begin() + fft_x.size()));
-        this->y_series->replace(QVector<QPointF>(yData.begin(), yData.begin() + fft_y.size()));
+        for(auto series : this->chart->series()) {
+            if(series->attachedAxes().contains(this->yAxis))
+                series->detachAxis(this->yAxis);
+            if(!series->attachedAxes().contains(this->yLogAxis))
+                series->attachAxis(this->yLogAxis);
+        }
 
-        if(this->x_series->attachedAxes().contains(this->yAxis))
-            this->x_series->detachAxis(this->yAxis);
-        if(this->y_series->attachedAxes().contains(this->yAxis))
-            this->y_series->detachAxis(this->yAxis);
-
-        if(!this->x_series->attachedAxes().contains(this->yLogAxis))
-            this->x_series->attachAxis(this->yLogAxis);
-        if(!this->y_series->attachedAxes().contains(this->yLogAxis))
-            this->y_series->attachAxis(this->yLogAxis);
-
-        this->xAxis->setRange(0, this->samples / 2);
         this->yLogAxis->setRange(min, max);
+        this->xAxis->setRange(0, this->samples / 2);
         this->yAxis->hide();
         this->yLogAxis->show();
     }
     else {
-        this->x_series->replace(xData);
-        this->y_series->replace(yData);
+        for(unsigned i = 0; i < qMin(data_x.size(), data_y.size()); i++) {
+            xData.push_back(QPointF(i, data_x[i]));
+            yData.push_back(QPointF(i, data_y[i]));
 
-        if(this->x_series->attachedAxes().contains(this->yLogAxis))
-            this->x_series->detachAxis(this->yLogAxis);
-        if(this->y_series->attachedAxes().contains(this->yLogAxis))
-            this->y_series->detachAxis(this->yLogAxis);
+            max = qMax(data_x[i], max);
+            max = qMax(data_y[i], max);
+            min = qMin(data_x[i], min);
+            min = qMin(data_y[i], min);
+        }
 
-        if(!this->x_series->attachedAxes().contains(this->yAxis))
-            this->x_series->attachAxis(this->yAxis);
-        if(!this->y_series->attachedAxes().contains(this->yAxis))
-            this->y_series->attachAxis(this->yAxis);
+        for(auto series : this->chart->series()) {
+            if(series->attachedAxes().contains(this->yLogAxis))
+                series->detachAxis(this->yLogAxis);
+            if(!series->attachedAxes().contains(this->yAxis))
+                series->attachAxis(this->yAxis);
+        }
 
-        if(min == 0 && max == std::numeric_limits<float>::min())
-            this->yAxis->setRange(-1000, 1000);
-        else
-            this->yAxis->setRange(min, max);
-
+        this->yAxis->setRange(min, max);
         this->xAxis->setRange(0, this->samples);
         this->yLogAxis->hide();
         this->yAxis->show();
     }
+    this->x_series->replace(xData);
+    this->y_series->replace(yData);
     ui->plot->update();
 
     delete[] data;

@@ -269,31 +269,6 @@
        </spacer>
       </item>
       <item>
-       <widget class="QCheckBox" name="checkBox">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>130</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>30</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Diff. Decimation</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QComboBox" name="cbDecimation">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
@@ -321,6 +296,11 @@
         <item>
          <property name="text">
           <string>100:1</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Differential</string>
          </property>
         </item>
        </widget>
