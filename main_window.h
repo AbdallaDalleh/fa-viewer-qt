@@ -76,6 +76,7 @@ private:
 
     float min;
     float max;
+    float samplingFrequency;
     int sock;
     int cells;
     int bpms;

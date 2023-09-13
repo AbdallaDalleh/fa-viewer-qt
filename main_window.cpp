@@ -133,9 +133,8 @@ void MainWindow::pollServer()
         data_y.push_back(value_y);
     }
 
-    if(min == 0 && max == std::numeric_limits<float>::min()) {
-        this->yAxis->setRange(-1000, 1000);
-        this->yLogAxis->setRange(-1000, 1000);
+    if(std::all_of(data_x.begin(), data_x.end(), [](float i){ return i == 0.0; }) &&
+       std::all_of(data_y.begin(), data_y.end(), [](float i){ return i == 0.0; })) {
         return;
     }
 
@@ -168,7 +167,9 @@ void MainWindow::pollServer()
         }
 
         this->yLogAxis->setRange(min, max);
+        this->yLogAxis->setTitleText("Amplitudes (um/√Hz)");
         this->xAxis->setRange(0, this->samples / 2);
+        this->xAxis->setTitleText("Frequency (Hz)");
         this->yAxis->hide();
         this->yLogAxis->show();
     }
@@ -191,7 +192,7 @@ void MainWindow::pollServer()
                     sum_y += data_y[i];
                     continue;
                 }
-                index = i / 100;
+                index = i / 100 - 1;
                 item_x = sum_x / 100.0;
                 item_y = sum_y / 100.0;
                 scale_x = 100;
@@ -206,8 +207,8 @@ void MainWindow::pollServer()
                 item_y = data_y[i] - data_y[i - 1];
             }
 
-            xData.push_back(QPointF(index, item_x));
-            yData.push_back(QPointF(index, item_y));
+            xData.push_back(QPointF(index / 10.0, item_x));
+            yData.push_back(QPointF(index / 10.0, item_y));
             max = qMax(item_x, max);
             max = qMax(item_y, max);
             min = qMin(item_x, min);
@@ -222,7 +223,10 @@ void MainWindow::pollServer()
         }
 
         this->yAxis->setRange(min, max);
-        this->xAxis->setRange(0, this->samples / scale_x);
+        this->yAxis->setTitleText("Positions (um)");
+        this->xAxis->setRange(0, this->timerPeriod / scale_x);
+        this->xAxis->setTitleText("Time (us)");
+
         this->yLogAxis->hide();
         this->yAxis->show();
     }
