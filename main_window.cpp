@@ -145,23 +145,22 @@ void MainWindow::pollServer()
     }
 
     if(ui->cbSignal->currentIndex() > 0) {
-        if(ui->cbWindow->isChecked()) {
-            float delta = (M_PI - -M_PI ) / (this->samples - 1);
-            for(int i = 0; i < this->samples; i++) {
-                data_x[i] *= 1 + cos(-M_PI + delta * i);
-                data_y[i] *= 1 + cos(-M_PI + delta * i);
-            }
-        }
-
         if(ui->cbDecimation->currentIndex() == FFT_1_1) {
+            if(ui->cbWindow->isChecked()) {
+                float delta = (M_PI - -M_PI ) / (this->samples - 1);
+                for(int i = 0; i < this->samples; i++) {
+                    data_x[i] *= 1 + cos(-M_PI + delta * i);
+                    data_y[i] *= 1 + cos(-M_PI + delta * i);
+                }
+            }
             cv::dft(data_x, data_x);
             cv::dft(data_y, data_y);
 
-            fft_x.push_back(abs(data_x[0]));
-            fft_y.push_back(abs(data_y[0]));
+            fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
+            fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
             for(int i = 1; i < this->samples - 2; i += 2) {
-                fft_x.push_back( sqrt( pow(data_x[i], 2) + pow(data_x[i+1], 2) ));
-                fft_y.push_back( sqrt( pow(data_y[i], 2) + pow(data_y[i+1], 2) ));
+                fft_x.push_back( sqrt( pow(data_x[i], 2) + pow(data_x[i+1], 2) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
+                fft_y.push_back( sqrt( pow(data_y[i], 2) + pow(data_y[i+1], 2) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
             }
         }
         else { // FFT_10_1
@@ -173,21 +172,28 @@ void MainWindow::pollServer()
             fft_x = std::vector<float>(decimation / 2, 0);
             fft_y = std::vector<float>(decimation / 2, 0);
             for(int i = 0; i < this->samples; i += decimation) {
-                std::vector<float> fft_x_dec;
-                std::vector<float> fft_y_dec;
                 std::vector<float> sub_x(data_x.begin() + i, data_x.begin() + i + decimation);
                 std::vector<float> sub_y(data_y.begin() + i, data_y.begin() + i + decimation);
+
+                if(ui->cbWindow->isChecked()) {
+                    float delta = (M_PI - -M_PI ) / (decimation - 1);
+                    for(int i = 0; i < decimation; i++) {
+                        sub_x[i] *= 1 + cos(-M_PI + delta * i);
+                        sub_y[i] *= 1 + cos(-M_PI + delta * i);
+                    }
+                }
+
                 cv::dft(sub_x, sub_x);
                 cv::dft(sub_y, sub_y);
 
-                sum_x[0] += square(sub_x[0]);
-                sum_y[0] += square(sub_y[0]);
+                sum_x[0] += square(sub_x[0]) * (2 / (this->samplingFrequency * this->samples));
+                sum_y[0] += square(sub_y[0]) * (2 / (this->samplingFrequency * this->samples));
                 for(int i = 1; i < decimation - 2; i += 2) {
-                    sum_x[(i - 1) / 2] += square(sub_x[i]) + square(sub_x[i+1]);
-                    sum_y[(i - 1) / 2] += square(sub_y[i]) + square(sub_y[i+1]);
+                    sum_x[(i - 1) / 2] += (square(sub_x[i]) + square(sub_x[i+1])) * (2 / (this->samplingFrequency * this->samples));
+                    sum_y[(i - 1) / 2] += (square(sub_y[i]) + square(sub_y[i+1])) * (2 / (this->samplingFrequency * this->samples));
                 }
-                sum_x[decimation / 2 - 1] += square(*(sub_x.end() - 1));
-                sum_y[decimation / 2 - 1] += square(*(sub_y.end() - 1));
+                sum_x[decimation / 2 - 1] += square(*(sub_x.end() - 1)) * (2 / (this->samplingFrequency * this->samples));
+                sum_y[decimation / 2 - 1] += square(*(sub_y.end() - 1)) * (2 / (this->samplingFrequency * this->samples));
             }
 
             std::transform(sum_x.begin(), sum_x.end(), fft_x.begin(), square_root_float);
@@ -310,12 +316,28 @@ void MainWindow::on_cbID_currentIndexChanged(const QString &arg1)
 void MainWindow::reconnectToServer()
 {
     char c;
+    char buffer[12];
 
     this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     srv.sin_port = htons(8888);
     srv.sin_family = AF_INET;
     srv.sin_addr.s_addr = inet_addr("10.4.1.22");
     ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
+
+    ::write(sock, "CFCK\n", 5);
+    ::read(sock, buffer, 13);
+    ::close(sock);
+
+    buffer[11] = '\0';
+    this->samplingFrequency = atof(buffer);
+
+    this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    srv.sin_port = htons(8888);
+    srv.sin_family = AF_INET;
+    srv.sin_addr.s_addr = inet_addr("10.4.1.22");
+    ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
+
+
     ::write(sock, message.toStdString().c_str(), message.length());
     ::read(sock, &c, 1);
     this->timer->start();
