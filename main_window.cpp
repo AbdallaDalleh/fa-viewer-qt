@@ -80,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->cbCells->setCurrentIndex(1);
     ui->cbTime->setCurrentIndex(3);
+    on_cbSignal_currentIndexChanged(0);
     reconnectToServer();
 }
 
@@ -93,6 +94,7 @@ void MainWindow::pollServer()
 {
     int i = 0;
     int size = 0;
+    int decimation_factor = 1;
     int32_t raw_x = 0;
     int32_t raw_y = 0;
     float value_x;
@@ -133,30 +135,72 @@ void MainWindow::pollServer()
         data_y.push_back(value_y);
     }
 
-    if(std::all_of(data_x.begin(), data_x.end(), [](float i){ return i == 0.0; }) &&
-       std::all_of(data_y.begin(), data_y.end(), [](float i){ return i == 0.0; })) {
+    auto compare_zero = [](float i){ return i == 0.0; };
+    auto square_root_float = [](float a){ return sqrt(a / 10.0); };
+    auto square = [](float a){ return a * a; };
+
+    if(std::all_of(data_x.begin(), data_x.end(), compare_zero) &&
+       std::all_of(data_y.begin(), data_y.end(), compare_zero)) {
         return;
     }
 
     if(ui->cbSignal->currentIndex() > 0) {
-        cv::dft(data_x, data_x);
-        cv::dft(data_y, data_y);
+        if(ui->cbWindow->isChecked()) {
+            float delta = (M_PI - -M_PI ) / (this->samples - 1);
+            for(int i = 0; i < this->samples; i++) {
+                data_x[i] *= 1 + cos(-M_PI + delta * i);
+                data_y[i] *= 1 + cos(-M_PI + delta * i);
+            }
+        }
 
-        fft_x.push_back(abs(data_x[0]));
-        for(unsigned i = 1; i < data_x.size() - 2; i += 2)
-            fft_x.push_back( sqrt( pow(data_x[i], 2) + pow(data_x[i+1], 2) ));
+        if(ui->cbDecimation->currentIndex() == FFT_1_1) {
+            cv::dft(data_x, data_x);
+            cv::dft(data_y, data_y);
 
-        fft_y.push_back(abs(data_y[0]));
-        for(unsigned i = 1; i < data_y.size() - 2; i += 2)
-            fft_y.push_back( sqrt( pow(data_y[i], 2) + pow(data_y[i+1], 2) ));
+            fft_x.push_back(abs(data_x[0]));
+            fft_y.push_back(abs(data_y[0]));
+            for(int i = 1; i < this->samples - 2; i += 2) {
+                fft_x.push_back( sqrt( pow(data_x[i], 2) + pow(data_x[i+1], 2) ));
+                fft_y.push_back( sqrt( pow(data_y[i], 2) + pow(data_y[i+1], 2) ));
+            }
+        }
+        else { // FFT_10_1
+            decimation_factor = 10;
+            int decimation = this->samples / decimation_factor;
+            std::vector<float> sum_x(decimation / 2, 0);
+            std::vector<float> sum_y(decimation / 2, 0);
+
+            fft_x = std::vector<float>(decimation / 2, 0);
+            fft_y = std::vector<float>(decimation / 2, 0);
+            for(int i = 0; i < this->samples; i += decimation) {
+                std::vector<float> fft_x_dec;
+                std::vector<float> fft_y_dec;
+                std::vector<float> sub_x(data_x.begin() + i, data_x.begin() + i + decimation);
+                std::vector<float> sub_y(data_y.begin() + i, data_y.begin() + i + decimation);
+                cv::dft(sub_x, sub_x);
+                cv::dft(sub_y, sub_y);
+
+                sum_x[0] += square(sub_x[0]);
+                sum_y[0] += square(sub_y[0]);
+                for(int i = 1; i < decimation - 2; i += 2) {
+                    sum_x[(i - 1) / 2] += square(sub_x[i]) + square(sub_x[i+1]);
+                    sum_y[(i - 1) / 2] += square(sub_y[i]) + square(sub_y[i+1]);
+                }
+                sum_x[decimation / 2 - 1] += square(*(sub_x.end() - 1));
+                sum_y[decimation / 2 - 1] += square(*(sub_y.end() - 1));
+            }
+
+            std::transform(sum_x.begin(), sum_x.end(), fft_x.begin(), square_root_float);
+            std::transform(sum_y.begin(), sum_y.end(), fft_y.begin(), square_root_float);
+        }
 
         for(int i = 0; i < (int)fft_x.size(); i++) {
-            xData.push_back(QPointF(i, fft_x[i]));
-            yData.push_back(QPointF(i, fft_y[i]));
-            max = qMax(fft_x[i], max);
-            max = qMax(fft_y[i], max);
-            min = qMin(fft_x[i], min);
-            min = qMin(fft_y[i], min);
+            xData.push_back(QPointF(i * decimation_factor, ui->cbSquared->isChecked() ? square(fft_x[i]) : fft_x[i]));
+            yData.push_back(QPointF(i * decimation_factor, ui->cbSquared->isChecked() ? square(fft_y[i]) : fft_y[i]));
+            max = qMax<float>(xData.last().y(), max);
+            max = qMax<float>(yData.last().y(), max);
+            min = qMin<float>(xData.last().y(), min);
+            min = qMin<float>(yData.last().y(), min);
         }
 
         for(auto series : this->chart->series()) {
@@ -180,13 +224,14 @@ void MainWindow::pollServer()
         float sum_y = 0;
         int index;
         int scale_x = 1;
+
         for(unsigned i = 0; i < qMin(data_x.size(), data_y.size()); i++) {
-            if(ui->cbDecimation->currentIndex() == 0) {
+            if(ui->cbDecimation->currentIndex() == DECIMATION_1_1) {
                 item_x = data_x[i];
                 item_y = data_y[i];
                 index = i;
             }
-            else if(ui->cbDecimation->currentIndex() == 1) {
+            else if(ui->cbDecimation->currentIndex() == DECIMATION_100_1) {
                 if(i == 0 || i % 100 != 0) {
                     sum_x += data_x[i];
                     sum_y += data_y[i];
@@ -199,7 +244,7 @@ void MainWindow::pollServer()
                 sum_x = 0;
                 sum_y = 0;
             }
-            else {
+            else { // DECIMATION_DIFF
                 if(i == 0)
                     continue;
                 index = i - 1;
@@ -312,4 +357,20 @@ void MainWindow::on_cbTime_currentIndexChanged(int index)
 
     this->bufferSize = this->samples * 2 * sizeof(float);
     this->timer->setInterval(this->timerPeriod);
+}
+
+void MainWindow::on_cbSignal_currentIndexChanged(int index)
+{
+    if(index == 0) {
+        ui->cbDecimation->clear();
+        ui->cbDecimation->addItems({"1:1", "100:1", "Differential"});
+        ui->cbWindow->hide();
+        ui->cbSquared->hide();
+    }
+    else {
+        ui->cbDecimation->clear();
+        ui->cbDecimation->addItems({"1:1", "10:1"});
+        ui->cbWindow->show();
+        ui->cbSquared->show();
+    }
 }

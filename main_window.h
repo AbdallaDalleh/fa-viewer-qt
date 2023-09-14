@@ -23,6 +23,7 @@
 #include <poll.h>
 
 #include <iostream>
+#include <numeric>
 using std::cout;
 using std::endl;
 
@@ -31,6 +32,18 @@ using std::endl;
 using namespace QT_CHARTS_NAMESPACE;
 
 #define MAX_BUFFER_SIZE (80000)
+
+#define MODE_RAW            0
+#define MODE_FFT            1
+#define MODE_FFT_LOGF       2
+#define MODE_INTEGRATED     3
+
+#define DECIMATION_1_1      0
+#define DECIMATION_100_1    1
+#define DECIMATION_DIFF     2
+
+#define FFT_1_1     0
+#define FFT_10_1    1
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -56,6 +69,8 @@ private slots:
     void on_cbShow_currentIndexChanged(int index);
 
     void on_cbTime_currentIndexChanged(int index);
+
+    void on_cbSignal_currentIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;
