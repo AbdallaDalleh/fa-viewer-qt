@@ -276,6 +276,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="cbFilter">
+        <property name="text">
+         <string>Scale by F filter</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="cbSquared">
         <property name="text">
          <string>um2/Hz Decimation</string>
@@ -283,7 +290,21 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_2">
+       <widget class="QCheckBox" name="cbLinear">
+        <property name="text">
+         <string>Linear</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="cbReverse">
+        <property name="text">
+         <string>Reversed</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="lblDec">
         <property name="text">
          <string>Decimation</string>
         </property>

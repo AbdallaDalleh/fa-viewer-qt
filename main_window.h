@@ -82,6 +82,7 @@ private:
     QValueAxis* xAxis;
     QValueAxis* yAxis;
     QLogValueAxis* yLogAxis;
+    QLogValueAxis* xLogAxis;
     QMap<QString, int> idsMap;
     QString format;
     QString message;
