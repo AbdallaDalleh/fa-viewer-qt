@@ -16,10 +16,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    fa_server.cpp \
     main.cpp \
     main_window.cpp
 
 HEADERS += \
+    fa_server.h \
     main_window.h
 
 FORMS += \

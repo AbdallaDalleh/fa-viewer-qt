@@ -28,6 +28,7 @@ using std::cout;
 using std::endl;
 
 #include <opencv2/core/core.hpp>
+#include "fa_server.h"
 
 using namespace QT_CHARTS_NAMESPACE;
 
