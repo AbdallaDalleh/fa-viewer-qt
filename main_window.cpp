@@ -10,11 +10,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     FastArchiverServer* fa = new FastArchiverServer("10.4.1.22", 8888, DEFAULT_CONFIG, this);
-    if(!fa->isConnected()) {
-        QMessageBox::warning(this, "Error", "Error Connecting to FA Server.", QMessageBox::Ok);
-    }
-    else
-        QMessageBox::information(this, "OK!", QString("Data: %1 | %2").arg(fa->samplingFrequency).arg(fa->getIDsList().size()), QMessageBox::Ok);
     return;
 
     x_series = new QLineSeries(this);
