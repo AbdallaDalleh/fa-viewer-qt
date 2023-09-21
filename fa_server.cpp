@@ -67,15 +67,20 @@ bool FastArchiverServer::initializeConnection()
 
 void FastArchiverServer::readConfiguration()
 {
-    QFile file(this->configFile);
+    ssize_t bytes;
+    char buffer[1600];
+    QFile file;
+    QTextStream config;
+    QJsonDocument faConfig;
+    QJsonObject object;
+
+    file.setFileName(this->configFile);
     if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(0 , "Error", "Could not open FA configuration file.", QMessageBox::Ok);
     }
 
-    char line[30];
-    QTextStream config(&file);
-    QJsonDocument faConfig = QJsonDocument::fromJson(QString(config.readAll()).toUtf8());
-    QJsonObject object = faConfig.object();
+    faConfig = QJsonDocument::fromJson(QString(config.readAll()).toUtf8());
+    object = faConfig.object();
     this->cells   = object.value("cells").toInt();
     this->bpms    = object.value("bpms_cell").toInt();
     this->format  = object.value("id_format").toString();
@@ -85,17 +90,22 @@ void FastArchiverServer::readConfiguration()
     this->bpmIDs.clear();
     this->bpmIDs.reserve(0);
 
-//    reconnectToServer(false);
-//    if(!this->serverConnected)
-//        return;
-//
-//    ::write(this->server, FA_CMD_CL, strlen(FA_CMD_CL));
-//    while(this->server->bytesAvailable() > 0) {
-//        this->server->readLine(line, sizeof(line));
-//        QStringList items = QString(line).split(' ');
-//        bpmIDs.push_back(items.last().trimmed());
-//    }
-//    this->server->disconnectFromHost();
+    reconnectToServer(false);
+    if(!this->serverConnected)
+        return;
+
+    ::write(this->server, FA_CMD_CL, strlen(FA_CMD_CL));
+    bytes = ::read(this->server, buffer, sizeof(buffer));
+    if(bytes >= 0) {
+        QString lines(buffer);
+        for(QString item : lines.split('\n')) {
+            if(!item.isEmpty())
+                this->bpmIDs.push_back(item.split(' ').last());
+        }
+    }
+
+    ::close(this->server);
+    this->serverConnected = false;
 }
 
 void FastArchiverServer::reconnectToServer(bool requestData)
@@ -184,15 +194,14 @@ void FastArchiverServer::mainLoop()
     for(i = 0; i < size; i += 8) {
         memcpy(&raw_x, buffer + i, sizeof(int32_t));
         memcpy(&raw_y, buffer + i + 4, sizeof(int32_t));
-
         value_x = (raw_x) / 1000.0;
         value_y = (raw_y) / 1000.0;
 
-        if(this->internalBufferX.size() >= MAX_BUFFER_SIZE / 20)
+        if(this->internalBufferX.size() >= MAX_BUFFER_SIZE)
             this->internalBufferX.erase(this->internalBufferX.begin());
         this->internalBufferX.push_back(value_x);
 
-        if(this->internalBufferY.size() >= MAX_BUFFER_SIZE / 20)
+        if(this->internalBufferY.size() >= MAX_BUFFER_SIZE)
             this->internalBufferY.erase(this->internalBufferY.begin());
         this->internalBufferY.push_back(value_y);
     }

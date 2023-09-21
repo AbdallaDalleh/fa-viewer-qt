@@ -10,7 +10,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     FastArchiverServer* fa = new FastArchiverServer("10.4.1.22", 8888, DEFAULT_CONFIG, this);
-    return;
 
     x_series = new QLineSeries(this);
     y_series = new QLineSeries(this);
@@ -57,7 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     this->timer = new QTimer(this);
     this->timer->setInterval(1000);
-    QObject::connect(this->timer, &QTimer::timeout, this, &MainWindow::pollServer);
+    // QObject::connect(this->timer, &QTimer::timeout, this, &MainWindow::pollServer);
     QObject::connect(ui->btnConnect, &QPushButton::clicked, this, &MainWindow::reconnectToServer);
 
     QFile file(":/fa-config.json");
@@ -90,9 +89,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->cbCells->setCurrentIndex(1);
     ui->cbTime->setCurrentIndex(3);
-    on_cbSignal_currentIndexChanged(2);
-    ui->cbSignal->setCurrentIndex(2);
-    reconnectToServer();
+    // reconnectToServer();
 }
 
 MainWindow::~MainWindow()
