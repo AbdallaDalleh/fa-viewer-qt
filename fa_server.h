@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QTcpSocket>
 #include <QTimer>
+#include <QtConcurrent>
 
 #include <iostream>
 using std::cout;
@@ -21,11 +22,31 @@ using std::endl;
 
 #define SAMPLING_RATE   10000
 #define MAX_TIMEBASE    50
-#define MAX_BUFFER_SIZE (2 * sizeof(float) * SAMPLING_RATE * MAX_TIMEBASE)
+#define MAX_BUFFER_SIZE (SAMPLING_RATE * MAX_TIMEBASE)
 #define DEFAULT_PORT    8888
 #define DEFAULT_CONFIG  ":/fa-config.json"
 #define FA_CMD_CF       "CF\n"
 #define FA_CMD_CL       "CL\n"
+
+#define MODE_RAW            0
+#define MODE_FFT            1
+#define MODE_FFT_LOGF       2
+#define MODE_INTEGRATED     3
+
+typedef enum {
+    RawData = 0,
+    FFT,
+    LogarithmicFFT,
+    Integrated
+} signal_mode_t;
+
+typedef enum {
+    RawData_1_1 = 0,
+    RawData_100_1,
+    RawData_Dec,
+    FFT_1_1,
+    FFT_10_1
+} decimation_mode_t;
 
 class FastArchiverServer : public QObject
 {
@@ -37,18 +58,26 @@ public:
 
     bool initializeConnection();
     bool isConnected();
+
     void readConfiguration();
     void reconnectToServer(bool requestData = false);
     void setBPMID(int id);
     void setTimeBase(float timeBase);
+    void setSignalMode(signal_mode_t mode);
 
     QStringList  getIDsList();
     QVector<int> getConfiguration();
 
     float samplingFrequency;
 
+    std::vector<float> internalBufferX;
+    std::vector<float> internalBufferY;
+    std::vector<float> outputBufferX;
+    std::vector<float> outputBufferY;
+
 signals:
     void connectionChanged(bool status);
+    void dataReady();
 
 private slots:
     void mainLoop();
@@ -66,12 +95,12 @@ private:
     int id;
     int bufferSize;
     bool serverConnected;
+    float timeBase;
     QString format;
     QStringList bpmIDs;
     QTimer* mainTimer;
-
-    std::vector<float> internalBufferX;
-    std::vector<float> internalBufferY;
+    signal_mode_t mode;
+    decimation_mode_t decimation;
 };
 
 #endif // FASTARCHIVERSERVER_H

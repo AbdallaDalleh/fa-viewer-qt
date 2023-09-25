@@ -9,8 +9,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    FastArchiverServer* fa = new FastArchiverServer("10.4.1.22", 8888, DEFAULT_CONFIG, this);
-
     x_series = new QLineSeries(this);
     y_series = new QLineSeries(this);
     x_series->setName("Horizontal");
@@ -56,7 +54,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     this->timer = new QTimer(this);
     this->timer->setInterval(1000);
-    // QObject::connect(this->timer, &QTimer::timeout, this, &MainWindow::pollServer);
+    QObject::connect(this->timer, &QTimer::timeout, this, &MainWindow::pollServer);
     QObject::connect(ui->btnConnect, &QPushButton::clicked, this, &MainWindow::reconnectToServer);
 
     QFile file(":/fa-config.json");
@@ -89,7 +87,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->cbCells->setCurrentIndex(1);
     ui->cbTime->setCurrentIndex(3);
-    // reconnectToServer();
+    ui->cbSignal->setCurrentText(0);
+    on_cbSignal_currentIndexChanged(0);
+    reconnectToServer();
 }
 
 MainWindow::~MainWindow()
@@ -107,6 +107,8 @@ void MainWindow::pollServer()
     int32_t raw_y = 0;
     float value_x;
     float value_y;
+    float min;
+    float max;
     char* data;
     QVector<QPointF> xData;
     QVector<QPointF> yData;
@@ -156,25 +158,11 @@ void MainWindow::pollServer()
 
     if(ui->cbSignal->currentIndex() == MODE_FFT_LOGF) {
 
-        if(ui->cbWindow->isChecked()) {
-            float delta = (M_PI - -M_PI ) / (this->samples - 1);
-            for(int i = 0; i < this->samples; i++) {
-                data_x[i] *= 1 + cos(-M_PI + delta * i);
-                data_y[i] *= 1 + cos(-M_PI + delta * i);
-            }
-        }
-        cv::dft(data_x, data_x);
-        cv::dft(data_y, data_y);
+        computeFFT(data_x, data_y);
+        computeFFTMagnitude(data_x, data_y, fft_x, fft_y);
 
-        fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
-        fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
-        for(int i = 1; i < this->samples - 2; i += 2) {
-            fft_x.push_back( sqrt( pow(data_x[i], 2) + pow(data_x[i+1], 2) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
-            fft_y.push_back( sqrt( pow(data_y[i], 2) + pow(data_y[i+1], 2) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
-        }
-
-        std::transform(fft_x.begin(), fft_x.end(), fft_x.begin(), [](float a){ return a * a; });
-        std::transform(fft_y.begin(), fft_y.end(), fft_y.begin(), [](float a){ return a * a; });
+        std::transform(fft_x.begin(), fft_x.end(), fft_x.begin(), square);
+        std::transform(fft_y.begin(), fft_y.end(), fft_y.begin(), square);
 
         std::vector<int> gaps;
         std::vector<int> diffs;
@@ -199,50 +187,15 @@ void MainWindow::pollServer()
             yData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ) ) );
             start += step;
 
-            max = qMax<float>(xData.last().y(), max);
-            max = qMax<float>(yData.last().y(), max);
-            min = qMin<float>(xData.last().y(), min);
-            min = qMin<float>(yData.last().y(), min);
+            std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        for(auto series : this->chart->series()) {
-            if(series->attachedAxes().contains(this->yAxis))
-                series->detachAxis(this->yAxis);
-            if(series->attachedAxes().contains(this->xAxis))
-                series->detachAxis(this->xAxis);
-            if(!series->attachedAxes().contains(this->yLogAxis))
-                series->attachAxis(this->yLogAxis);
-            if(!series->attachedAxes().contains(this->xLogAxis))
-                series->attachAxis(this->xLogAxis);
-        }
-
-        this->yLogAxis->setRange(min, max);
-        this->yLogAxis->setTitleText("Amplitudes (um/√Hz)");
-        this->xLogAxis->setRange(1, diffs.size());
-        this->xLogAxis->setTitleText("Frequency (Hz2)");
-        this->yAxis->hide();
-        this->xAxis->hide();
-        this->yLogAxis->show();
-        this->xLogAxis->show();
+        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Amplitudes (um/√Hz)"});
     }
     else if(ui->cbSignal->currentIndex() == MODE_FFT) {
         if(ui->cbDecimation->currentIndex() == FFT_1_1) {
-            if(ui->cbWindow->isChecked()) {
-                float delta = (M_PI - -M_PI ) / (this->samples - 1);
-                for(int i = 0; i < this->samples; i++) {
-                    data_x[i] *= 1 + cos(-M_PI + delta * i);
-                    data_y[i] *= 1 + cos(-M_PI + delta * i);
-                }
-            }
-            cv::dft(data_x, data_x);
-            cv::dft(data_y, data_y);
-
-            fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
-            fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
-            for(int i = 1; i < this->samples - 2; i += 2) {
-                fft_x.push_back( sqrt( pow(data_x[i], 2) + pow(data_x[i+1], 2) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
-                fft_y.push_back( sqrt( pow(data_y[i], 2) + pow(data_y[i+1], 2) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
-            }
+            computeFFT(data_x, data_y);
+            computeFFTMagnitude(data_x, data_y, fft_x, fft_y);
         }
         else { // FFT_10_1
             decimation_factor = 10;
@@ -256,16 +209,7 @@ void MainWindow::pollServer()
                 std::vector<float> sub_x(data_x.begin() + i, data_x.begin() + i + decimation);
                 std::vector<float> sub_y(data_y.begin() + i, data_y.begin() + i + decimation);
 
-                if(ui->cbWindow->isChecked()) {
-                    float delta = (M_PI - -M_PI ) / (decimation - 1);
-                    for(int i = 0; i < decimation; i++) {
-                        sub_x[i] *= 1 + cos(-M_PI + delta * i);
-                        sub_y[i] *= 1 + cos(-M_PI + delta * i);
-                    }
-                }
-
-                cv::dft(sub_x, sub_x);
-                cv::dft(sub_y, sub_y);
+                computeFFT(sub_x, sub_y);
 
                 sum_x[0] += square(sub_x[0]) * (2 / (this->samplingFrequency * this->samples));
                 sum_y[0] += square(sub_y[0]) * (2 / (this->samplingFrequency * this->samples));
@@ -284,25 +228,10 @@ void MainWindow::pollServer()
         for(int i = 0; i < (int)fft_x.size(); i++) {
             xData.push_back(QPointF(i * decimation_factor, ui->cbSquared->isChecked() ? square(fft_x[i]) : fft_x[i]));
             yData.push_back(QPointF(i * decimation_factor, ui->cbSquared->isChecked() ? square(fft_y[i]) : fft_y[i]));
-            max = qMax<float>(xData.last().y(), max);
-            max = qMax<float>(yData.last().y(), max);
-            min = qMin<float>(xData.last().y(), min);
-            min = qMin<float>(yData.last().y(), min);
+            std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        for(auto series : this->chart->series()) {
-            if(series->attachedAxes().contains(this->yAxis))
-                series->detachAxis(this->yAxis);
-            if(!series->attachedAxes().contains(this->yLogAxis))
-                series->attachAxis(this->yLogAxis);
-        }
-
-        this->yLogAxis->setRange(min, max);
-        this->yLogAxis->setTitleText("Amplitudes (um/√Hz)");
-        this->xAxis->setRange(0, this->samples / 2);
-        this->xAxis->setTitleText("Frequency (Hz)");
-        this->yAxis->hide();
-        this->yLogAxis->show();
+        modifyAxes({xAxis, yLogAxis}, {xLogAxis, yAxis}, {0, this->samples / 2}, {min, max}, {"Frequencies (Hz)", "Amplitudes (um/√Hz)"});
     }
     else {
         float item_x;
@@ -341,32 +270,14 @@ void MainWindow::pollServer()
 
             xData.push_back(QPointF(index / 10.0, item_x));
             yData.push_back(QPointF(index / 10.0, item_y));
-            max = qMax(item_x, max);
-            max = qMax(item_y, max);
-            min = qMin(item_x, min);
-            min = qMin(item_y, min);
+            std::tie(min, max) = calculateLimits(item_x, item_y, min, max);
         }
 
-        for(auto series : this->chart->series()) {
-            if(series->attachedAxes().contains(this->yLogAxis))
-                series->detachAxis(this->yLogAxis);
-            if(series->attachedAxes().contains(this->xLogAxis))
-                series->detachAxis(this->xLogAxis);
-            if(!series->attachedAxes().contains(this->yAxis))
-                series->attachAxis(this->yAxis);
-            if(!series->attachedAxes().contains(this->xAxis))
-                series->attachAxis(this->xAxis);
-        }
-
-        this->yAxis->setRange(min, max);
-        this->yAxis->setTitleText("Positions (um)");
-        this->xAxis->setRange(0, this->timerPeriod / scale_x);
-        this->xAxis->setTitleText("Time (us)");
-
-        this->yLogAxis->hide();
-        this->xLogAxis->hide();
-        this->yAxis->show();
-        this->xAxis->show();
+        modifyAxes({xAxis, yAxis},             // X, Y axes to be used
+                   {xLogAxis, yLogAxis},       // X, Y axes to be hidden (detached)
+                   {0, timerPeriod / scale_x},       // X axis range
+                   {min, max},                             // Y axis range
+                   {"Positions (um)", "Time (us)"});       // X, Y axes titles.
     }
     this->x_series->replace(xData);
     this->y_series->replace(yData);
@@ -511,5 +422,76 @@ void MainWindow::on_cbSignal_currentIndexChanged(int index)
         ui->cbLinear->show();
         ui->cbReverse->show();
         ui->lblDec->hide();
+    }
+}
+
+void MainWindow::computeFFT(std::vector<float>& data_x, std::vector<float>& data_y)
+{
+    if(ui->cbWindow->isChecked()) {
+        float delta = (M_PI - -M_PI ) / (this->samples - 1);
+        for(int i = 0; i < this->samples; i++) {
+            data_x[i] *= 1 + cos(-M_PI + delta * i);
+            data_y[i] *= 1 + cos(-M_PI + delta * i);
+        }
+    }
+    cv::dft(data_x, data_x);
+    cv::dft(data_y, data_y);
+}
+
+std::tuple<float, float> MainWindow::calculateLimits(float a, float b, float &min, float &max)
+{
+    max = qMax(a, max);
+    max = qMax(b, max);
+    min = qMin(a, min);
+    min = qMin(b, min);
+    return std::make_tuple(min, max);
+}
+
+void MainWindow::modifyAxes(std::tuple<QAbstractAxis *, QAbstractAxis *> useAxes,
+                            std::tuple<QAbstractAxis *, QAbstractAxis *> hideAxes,
+                            std::tuple<float, float> rangeX, std::tuple<float, float> rangeY, QStringList axesTitles)
+{
+    //
+    // Other options for unpacking tuples:
+    //  1. std::tie with predefined variables
+    //  2. std::get<index>(tuple)
+    //
+
+    auto[minX, maxX] = rangeX;
+    auto[minY, maxY] = rangeY;
+    auto[useXAxis, useYAxis] = useAxes;
+    auto[hideXAxis, hideYAxis] = hideAxes;
+
+    for(auto series : this->chart->series()) {
+        if(series->attachedAxes().contains(hideYAxis))
+            series->detachAxis(hideYAxis);
+        if(series->attachedAxes().contains(hideXAxis))
+            series->detachAxis(hideXAxis);
+        if(!series->attachedAxes().contains(useYAxis))
+            series->attachAxis(useYAxis);
+        if(!series->attachedAxes().contains(useXAxis))
+            series->attachAxis(useXAxis);
+    }
+
+    useXAxis->setRange(minX, maxX);
+    useXAxis->setTitleText(axesTitles[0]);
+    useYAxis->setRange(minY, maxY);
+    useYAxis->setTitleText(axesTitles[1]);
+
+    hideYAxis->hide();
+    hideXAxis->hide();
+    useYAxis->show();
+    useXAxis->show();
+}
+
+void MainWindow::computeFFTMagnitude(std::vector<float> &data_x, std::vector<float> &data_y, std::vector<float> &fft_x, std::vector<float> &fft_y)
+{
+    auto square = [](float a){ return a * a; };
+
+    fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
+    fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
+    for(int i = 1; i < this->samples - 2; i += 2) {
+        fft_x.push_back( sqrt( square(data_x[i]) + square(data_x[i+1]) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
+        fft_y.push_back( sqrt( square(data_y[i]) + square(data_y[i+1]) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
     }
 }

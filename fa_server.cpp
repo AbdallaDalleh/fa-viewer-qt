@@ -19,14 +19,15 @@ FastArchiverServer::FastArchiverServer(QString ipAddress, int port, QString conf
     this->mainTimer = new QTimer(this);
     QObject::connect(this->mainTimer, &QTimer::timeout, this, &FastArchiverServer::mainLoop);
 
-    setBPMID(2);
-    setTimeBase(0.5);
+    setBPMID(1);
+    setTimeBase(1);
     reconnectToServer(true);
     mainLoop();
 }
 
 FastArchiverServer::~FastArchiverServer()
 {
+    this->mainTimer->stop();
 }
 
 bool FastArchiverServer::initializeConnection()
@@ -79,6 +80,7 @@ void FastArchiverServer::readConfiguration()
         QMessageBox::warning(0 , "Error", "Could not open FA configuration file.", QMessageBox::Ok);
     }
 
+    config.setDevice(&file);
     faConfig = QJsonDocument::fromJson(QString(config.readAll()).toUtf8());
     object = faConfig.object();
     this->cells   = object.value("cells").toInt();
@@ -175,35 +177,63 @@ void FastArchiverServer::setTimeBase(float timeBase)
     else
         period = timeBase;
 
+    this->timeBase = timeBase;
     this->bufferSize = period * SAMPLING_RATE * 2 * sizeof(float);
     this->mainTimer->setInterval(period * 1000);
 }
 
+void FastArchiverServer::setSignalMode(signal_mode_t mode)
+{
+    this->mode = mode;
+}
+
 void FastArchiverServer::mainLoop()
 {
-    int size = 0;
-    char* buffer;
-    int32_t raw_x;
-    int32_t raw_y;
-    float value_x;
-    float value_y;
-    int i;
+    QtConcurrent::run([this](){
+        int size = 0;
+        char* buffer;
+        int32_t raw_x;
+        int32_t raw_y;
+        float value_x;
+        float value_y;
+        int i;
 
-    buffer = new char[this->bufferSize];
-    size = ::recv(this->server, buffer, this->bufferSize, MSG_WAITALL);
-    for(i = 0; i < size; i += 8) {
-        memcpy(&raw_x, buffer + i, sizeof(int32_t));
-        memcpy(&raw_y, buffer + i + 4, sizeof(int32_t));
-        value_x = (raw_x) / 1000.0;
-        value_y = (raw_y) / 1000.0;
+        buffer = new char[this->bufferSize];
+        size   = ::recv(this->server, buffer, this->bufferSize, MSG_WAITALL);
+        for(i = 0; i < size; i += 8) {
+            memcpy(&raw_x, buffer + i, sizeof(int32_t));
+            memcpy(&raw_y, buffer + i + 4, sizeof(int32_t));
+            value_x = (raw_x) / 1000.0;
+            value_y = (raw_y) / 1000.0;
 
-        if(this->internalBufferX.size() >= MAX_BUFFER_SIZE)
-            this->internalBufferX.erase(this->internalBufferX.begin());
-        this->internalBufferX.push_back(value_x);
+            if(this->internalBufferX.size() >= MAX_BUFFER_SIZE)
+                this->internalBufferX.erase(this->internalBufferX.begin());
+            this->internalBufferX.push_back(value_x);
 
-        if(this->internalBufferY.size() >= MAX_BUFFER_SIZE)
-            this->internalBufferY.erase(this->internalBufferY.begin());
-        this->internalBufferY.push_back(value_y);
-    }
-    delete [] buffer;
+            if(this->internalBufferY.size() >= MAX_BUFFER_SIZE)
+                this->internalBufferY.erase(this->internalBufferY.begin());
+            this->internalBufferY.push_back(value_y);
+
+            if(i < 64) {
+                cout << value_x << " - " << value_y << endl;
+            }
+        }
+
+        cout << this->internalBufferX.size() << " - " << internalBufferY.size() << endl;
+
+        if(this->mode == RawData) {
+            if(this->internalBufferX.size() <= this->timeBase * SAMPLING_RATE)
+                this->outputBufferX = std::vector<float>(this->internalBufferX.begin(), this->internalBufferX.end());
+            else
+                this->outputBufferX = std::vector<float>(this->internalBufferX.end() - this->timeBase * SAMPLING_RATE, this->internalBufferX.end());
+
+            if(this->internalBufferY.size() <= this->timeBase * SAMPLING_RATE)
+                this->outputBufferY = std::vector<float>(this->internalBufferY.begin(), this->internalBufferY.end());
+            else
+                this->outputBufferY = std::vector<float>(this->internalBufferY.end() - this->timeBase * SAMPLING_RATE, this->internalBufferY.end());
+        }
+
+        emit dataReady();
+        delete [] buffer;
+    });
 }

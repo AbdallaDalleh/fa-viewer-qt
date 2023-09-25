@@ -28,7 +28,6 @@ using std::cout;
 using std::endl;
 
 #include <opencv2/core/core.hpp>
-#include "fa_server.h"
 
 using namespace QT_CHARTS_NAMESPACE;
 
@@ -59,6 +58,15 @@ public:
     ~MainWindow();
 
     void reconnectToServer();
+
+    void computeFFT(std::vector<float>& data_x, std::vector<float>& data_y);
+
+    void computeFFTMagnitude(std::vector<float>& data_x, std::vector<float>& data_y, std::vector<float>& fft_x, std::vector<float>& fft_y);
+
+    std::tuple<float, float> calculateLimits(float a, float b, float& min, float& max);
+
+    void modifyAxes(std::tuple<QAbstractAxis*, QAbstractAxis*> useAxes, std::tuple<QAbstractAxis*,
+                    QAbstractAxis*> hideAxes, std::tuple<float, float> rangeX, std::tuple<float, float> rangeY, QStringList axesTitles);
 
 private slots:
     void pollServer();
@@ -91,8 +99,6 @@ private:
 
     struct sockaddr_in srv;
 
-    float min;
-    float max;
     float samplingFrequency;
     int sock;
     int cells;
