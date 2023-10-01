@@ -150,6 +150,7 @@ void MainWindow::pollServer()
     auto compare_zero = [](float i){ return i == 0.0; };
     auto square_root_float = [](float a){ return sqrt(a / 10.0); };
     auto square = [](float a){ return a * a; };
+    auto sum = [](float a, float b) { return a*a + b; };
 
     if(std::all_of(data_x.begin(), data_x.end(), compare_zero) &&
        std::all_of(data_y.begin(), data_y.end(), compare_zero)) {
@@ -157,72 +158,71 @@ void MainWindow::pollServer()
     }
 
     if(ui->cbSignal->currentIndex() == MODE_FFT_LOGF) {
+        computeFFT(data_x, data_y, fft_x, fft_y);
+//        std::transform(fft_x.begin(), fft_x.end(), fft_x.begin(), square);
+//        std::transform(fft_y.begin(), fft_y.end(), fft_y.begin(), square);
 
-        computeFFT(data_x, data_y);
-        computeFFTMagnitude(data_x, data_y, fft_x, fft_y);
+//        std::vector<int> gaps;
+//        std::vector<int> diffs;
+//        double delta = pow(10, log10(this->samples/2 - 2)/(this->samples / 2 - 1));
+//        for(int i = 0; i < (this->samples / 2); i++) {
+//            gaps.push_back(pow(delta, i));
+//        }
 
-        std::transform(fft_x.begin(), fft_x.end(), fft_x.begin(), square);
-        std::transform(fft_y.begin(), fft_y.end(), fft_y.begin(), square);
+//        for(size_t i = 1; i < gaps.size(); i++) {
+//            int diff = gaps[i] - gaps[i - 1];
+//            if(diff > 0)
+//                diffs.push_back(diff);
+//        }
 
-        std::vector<int> gaps;
-        std::vector<int> diffs;
-        double delta = pow(10, log10(this->samples/2 - 2)/(this->samples / 2 - 1));
-        for(int i = 0; i < (this->samples / 2); i++) {
-            gaps.push_back(pow(delta, i));
-        }
+//        int start = 0;
+//        int step = 0;
+//        std::vector<float>::iterator condense_x = fft_x.begin();
+//        std::vector<float>::iterator condense_y = fft_y.begin();
+//        for(unsigned i = 0; i < diffs.size(); i++) {
+//            step = diffs[i];
+//            xData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ) ) );
+//            yData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ) ) );
+//            start += step;
 
-        for(size_t i = 1; i < gaps.size(); i++) {
-            int diff = gaps[i] - gaps[i - 1];
-            if(diff > 0)
-                diffs.push_back(diff);
-        }
+//            std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
+//        }
 
-        int start = 0;
-        int step = 0;
-        std::vector<float>::iterator condense_x = fft_x.begin();
-        std::vector<float>::iterator condense_y = fft_y.begin();
-        for(unsigned i = 0; i < diffs.size(); i++) {
-            step = diffs[i];
-            xData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ) ) );
-            yData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ) ) );
-            start += step;
-
+        for(int i = 1; i < qMin<int>(fft_x.size(), fft_y.size()); i++) {
+            xData.push_back(QPointF(i, fft_x[i]));
+            yData.push_back(QPointF(i, fft_y[i]));
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Amplitudes (um/√Hz)"});
+        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, this->samples / 2}, {min, max}, {"Frequency (Hz)", "Amplitudes (um/√Hz)"});
     }
     else if(ui->cbSignal->currentIndex() == MODE_FFT) {
         if(ui->cbDecimation->currentIndex() == FFT_1_1) {
-            computeFFT(data_x, data_y);
-            computeFFTMagnitude(data_x, data_y, fft_x, fft_y);
+            computeFFT(data_x, data_y, fft_x, fft_y);
         }
         else { // FFT_10_1
             decimation_factor = 10;
             int decimation = this->samples / decimation_factor;
             std::vector<float> sum_x(decimation / 2, 0);
             std::vector<float> sum_y(decimation / 2, 0);
+            std::vector<float> fft_mag_x;
+            std::vector<float> fft_mag_y;
 
-            fft_x = std::vector<float>(decimation / 2, 0);
-            fft_y = std::vector<float>(decimation / 2, 0);
             for(int i = 0; i < this->samples; i += decimation) {
                 std::vector<float> sub_x(data_x.begin() + i, data_x.begin() + i + decimation);
                 std::vector<float> sub_y(data_y.begin() + i, data_y.begin() + i + decimation);
 
-                computeFFT(sub_x, sub_y);
-
-                sum_x[0] += square(sub_x[0]) * (2 / (this->samplingFrequency * this->samples));
-                sum_y[0] += square(sub_y[0]) * (2 / (this->samplingFrequency * this->samples));
-                for(int i = 1; i < decimation - 2; i += 2) {
-                    sum_x[(i - 1) / 2] += (square(sub_x[i]) + square(sub_x[i+1])) * (2 / (this->samplingFrequency * this->samples));
-                    sum_y[(i - 1) / 2] += (square(sub_y[i]) + square(sub_y[i+1])) * (2 / (this->samplingFrequency * this->samples));
-                }
-                sum_x[decimation / 2 - 1] += square(*(sub_x.end() - 1)) * (2 / (this->samplingFrequency * this->samples));
-                sum_y[decimation / 2 - 1] += square(*(sub_y.end() - 1)) * (2 / (this->samplingFrequency * this->samples));
+                computeFFT(sub_x, sub_y, fft_mag_x, fft_mag_y);
+                std::transform(fft_mag_x.begin(), fft_mag_x.end(), sum_x.begin(), sum_x.begin(), sum);
+                std::transform(fft_mag_y.begin(), fft_mag_y.end(), sum_y.begin(), sum_y.begin(), sum);
             }
 
-            std::transform(sum_x.begin(), sum_x.end(), fft_x.begin(), square_root_float);
-            std::transform(sum_y.begin(), sum_y.end(), fft_y.begin(), square_root_float);
+            fft_x.clear();
+            fft_y.clear();
+            for(auto item : sum_x)
+                fft_x.push_back(square_root_float(item));
+            for(auto item : sum_y)
+                fft_y.push_back(square_root_float(item));
         }
 
         for(int i = 0; i < (int)fft_x.size(); i++) {
@@ -425,19 +425,6 @@ void MainWindow::on_cbSignal_currentIndexChanged(int index)
     }
 }
 
-void MainWindow::computeFFT(std::vector<float>& data_x, std::vector<float>& data_y)
-{
-    if(ui->cbWindow->isChecked()) {
-        float delta = (M_PI - -M_PI ) / (this->samples - 1);
-        for(int i = 0; i < this->samples; i++) {
-            data_x[i] *= 1 + cos(-M_PI + delta * i);
-            data_y[i] *= 1 + cos(-M_PI + delta * i);
-        }
-    }
-    cv::dft(data_x, data_x);
-    cv::dft(data_y, data_y);
-}
-
 std::tuple<float, float> MainWindow::calculateLimits(float a, float b, float &min, float &max)
 {
     max = qMax(a, max);
@@ -484,14 +471,30 @@ void MainWindow::modifyAxes(std::tuple<QAbstractAxis *, QAbstractAxis *> useAxes
     useXAxis->show();
 }
 
-void MainWindow::computeFFTMagnitude(std::vector<float> &data_x, std::vector<float> &data_y, std::vector<float> &fft_x, std::vector<float> &fft_y)
+void MainWindow::computeFFT(std::vector<float> &data_x, std::vector<float> &data_y, std::vector<float> &fft_x, std::vector<float> &fft_y)
 {
     auto square = [](float a){ return a * a; };
+    size_t samples = qMin<size_t>(data_x.size(), data_y.size());
 
-    fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
-    fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * this->samples)));
-    for(int i = 1; i < this->samples - 2; i += 2) {
-        fft_x.push_back( sqrt( square(data_x[i]) + square(data_x[i+1]) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
-        fft_y.push_back( sqrt( square(data_y[i]) + square(data_y[i+1]) ) * sqrt(2 / (this->samplingFrequency * this->samples)));
+    if(ui->cbWindow->isChecked()) {
+        float delta = (M_PI - -M_PI ) / (samples - 1);
+        for(size_t i = 0; i < samples; i++) {
+            data_x[i] *= 1 + cos(-M_PI + delta * i);
+            data_y[i] *= 1 + cos(-M_PI + delta * i);
+        }
+    }
+    cv::dft(data_x, data_x);
+    cv::dft(data_y, data_y);
+
+    fft_x.clear();
+    fft_y.clear();
+    fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * samples)));
+    fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * samples)));
+    for(int i = 1; i < qMin<int>(data_x.size(), data_y.size()) - 2; i += 2) {
+        fft_x.push_back( sqrt( square(data_x[i]) + square(data_x[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
+        fft_y.push_back( sqrt( square(data_y[i]) + square(data_y[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
+
+//        fft_x.push_back( std::abs( std::complex<float>(data_x[i], data_x[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
+//        fft_y.push_back( std::abs( std::complex<float>(data_y[i], data_y[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
     }
 }

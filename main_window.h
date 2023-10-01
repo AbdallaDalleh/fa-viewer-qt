@@ -59,9 +59,7 @@ public:
 
     void reconnectToServer();
 
-    void computeFFT(std::vector<float>& data_x, std::vector<float>& data_y);
-
-    void computeFFTMagnitude(std::vector<float>& data_x, std::vector<float>& data_y, std::vector<float>& fft_x, std::vector<float>& fft_y);
+    void computeFFT(std::vector<float>& data_x, std::vector<float>& data_y, std::vector<float>& fft_x, std::vector<float>& fft_y);
 
     std::tuple<float, float> calculateLimits(float a, float b, float& min, float& max);
 
