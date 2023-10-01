@@ -285,7 +285,7 @@
       <item>
        <widget class="QCheckBox" name="cbSquared">
         <property name="text">
-         <string>um2/Hz Decimation</string>
+         <string>um^2/Hz</string>
         </property>
        </widget>
       </item>

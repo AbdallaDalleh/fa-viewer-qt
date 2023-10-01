@@ -21,6 +21,9 @@ MainWindow::MainWindow(QWidget *parent)
     this->xAxis->setLabelFormat("%d");
 
     this->yAxis = new QValueAxis;
+    this->yAxis->setTickType(QValueAxis::TicksFixed);
+    this->yAxis->setTickCount(6);
+    this->yAxis->setMinorTickCount(1);
     this->yAxis->setTitleText("Positions");
 
     this->yLogAxis = new QLogValueAxis;
@@ -72,6 +75,21 @@ MainWindow::MainWindow(QWidget *parent)
     this->format  = object.value("id_format").toString();
     this->firstID = object.value("first_id").toInt();
     this->ids     = object.value("ids").toInt();
+    this->ipAddress = object.value("ip_address").toString();
+
+    char buffer[1600];
+    ssize_t bytes;
+    initSocket();
+    ::write(this->sock, FA_CMD_CL, strlen(FA_CMD_CL));
+    bytes = ::read(this->sock, buffer, sizeof(buffer));
+    if(bytes >= 0) {
+        buffer[bytes] = '\0';
+        QString lines(buffer);
+        for(QString item : lines.split('\n')) {
+            if(!item.isEmpty())
+                this->bpmIDs.push_back(item.split(' ').last());
+        }
+    }
 
     int currentID = this->firstID;
     for(int cell = 1; cell <= this->cells; cell++) {
@@ -79,8 +97,9 @@ MainWindow::MainWindow(QWidget *parent)
             break;
 
         ui->cbCells->addItem("Cell " + QString::number(cell));
-        for(int bpm = 1; bpm <= this->bpms; bpm++) {
-            id = QString().asprintf(this->format.toStdString().c_str(), cell, currentID, bpm);
+        QStringList subIDs = this->bpmIDs.filter(QString::asprintf("C%02d", cell));
+        for(QString item : subIDs) {
+            id = QString().asprintf(this->format.toStdString().c_str(), cell, currentID, subIDs.indexOf(item) + 1);
             this->idsMap.insert(id, currentID++);
         }
     }
@@ -89,6 +108,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->cbTime->setCurrentIndex(3);
     ui->cbSignal->setCurrentText(0);
     on_cbSignal_currentIndexChanged(0);
+    readFrequency();
     reconnectToServer();
 }
 
@@ -231,7 +251,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xAxis, yLogAxis}, {xLogAxis, yAxis}, {0, this->samples / 2}, {min, max}, {"Frequencies (Hz)", "Amplitudes (um/√Hz)"});
+        modifyAxes({xAxis, yLogAxis}, {xLogAxis, yAxis}, {0, this->samples / 2}, {min, max}, {"Frequencies (Hz)", ui->cbSquared->isChecked() ? "Amplitudes (um^2/Hz)" : "Amplitudes (um/√Hz)"});
     }
     else {
         float item_x;
@@ -276,8 +296,8 @@ void MainWindow::pollServer()
         modifyAxes({xAxis, yAxis},             // X, Y axes to be used
                    {xLogAxis, yLogAxis},       // X, Y axes to be hidden (detached)
                    {0, timerPeriod / scale_x},       // X axis range
-                   {min, max},                             // Y axis range
-                   {"Positions (um)", "Time (us)"});       // X, Y axes titles.
+                   {min - PLOT_RAW_OFFSET, max + PLOT_RAW_OFFSET},                             // Y axis range
+                   {"Time (ms)", "Positions (um)"});       // X, Y axes titles.
     }
     this->x_series->replace(xData);
     this->y_series->replace(yData);
@@ -314,28 +334,8 @@ void MainWindow::on_cbID_currentIndexChanged(const QString &arg1)
 void MainWindow::reconnectToServer()
 {
     char c;
-    char buffer[12];
 
-    this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    srv.sin_port = htons(8888);
-    srv.sin_family = AF_INET;
-    srv.sin_addr.s_addr = inet_addr("10.4.1.22");
-    ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
-
-    ::write(sock, "CFCK\n", 5);
-    ::read(sock, buffer, 13);
-    ::close(sock);
-
-    buffer[11] = '\0';
-    this->samplingFrequency = atof(buffer);
-
-    this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    srv.sin_port = htons(8888);
-    srv.sin_family = AF_INET;
-    srv.sin_addr.s_addr = inet_addr("10.4.1.22");
-    ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
-
-
+    initSocket();
     ::write(sock, message.toStdString().c_str(), message.length());
     ::read(sock, &c, 1);
     this->timer->start();
@@ -473,7 +473,6 @@ void MainWindow::modifyAxes(std::tuple<QAbstractAxis *, QAbstractAxis *> useAxes
 
 void MainWindow::computeFFT(std::vector<float> &data_x, std::vector<float> &data_y, std::vector<float> &fft_x, std::vector<float> &fft_y)
 {
-    auto square = [](float a){ return a * a; };
     size_t samples = qMin<size_t>(data_x.size(), data_y.size());
 
     if(ui->cbWindow->isChecked()) {
@@ -491,10 +490,29 @@ void MainWindow::computeFFT(std::vector<float> &data_x, std::vector<float> &data
     fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * samples)));
     fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * samples)));
     for(int i = 1; i < qMin<int>(data_x.size(), data_y.size()) - 2; i += 2) {
-        fft_x.push_back( sqrt( square(data_x[i]) + square(data_x[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
-        fft_y.push_back( sqrt( square(data_y[i]) + square(data_y[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
-
-//        fft_x.push_back( std::abs( std::complex<float>(data_x[i], data_x[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
-//        fft_y.push_back( std::abs( std::complex<float>(data_y[i], data_y[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
+        fft_x.push_back( std::abs( std::complex<float>(data_x[i], data_x[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
+        fft_y.push_back( std::abs( std::complex<float>(data_y[i], data_y[i+1]) ) * sqrt(2 / (this->samplingFrequency * samples)));
     }
+}
+
+void MainWindow::initSocket()
+{
+    this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    srv.sin_port = htons(8888);
+    srv.sin_family = AF_INET;
+    srv.sin_addr.s_addr = inet_addr(this->ipAddress.toStdString().c_str());
+    ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
+}
+
+void MainWindow::readFrequency()
+{
+    char buffer[12];
+
+    initSocket();
+    ::write(sock, FA_CMD_CF, strlen(FA_CMD_CF));
+    ::read(sock, buffer, sizeof(buffer));
+    ::close(sock);
+
+    buffer[11] = '\0';
+    this->samplingFrequency = atof(buffer);
 }
