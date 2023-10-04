@@ -86,6 +86,8 @@ private slots:
 
     void on_cbSignal_currentIndexChanged(int index);
 
+    void on_cbDecimation_currentIndexChanged(int index);
+
 private:
     Ui::MainWindow *ui;
 
@@ -103,6 +105,9 @@ private:
     QString ipAddress;
     QStringList bpmIDs;
 
+    std::vector<float> fft_logf_x;
+    std::vector<float> fft_logf_y;
+
     struct sockaddr_in srv;
 
     float samplingFrequency;
@@ -115,5 +120,7 @@ private:
     int samples;
     int bufferSize;
     int timerPeriod;
+    bool resetLogFilter;
+    float logFilter;
 };
 #endif // MAINWINDOW_H

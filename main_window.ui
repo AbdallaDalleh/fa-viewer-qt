@@ -278,7 +278,7 @@
       <item>
        <widget class="QCheckBox" name="cbFilter">
         <property name="text">
-         <string>Scale by F filter</string>
+         <string>Scale by F</string>
         </property>
        </widget>
       </item>

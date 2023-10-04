@@ -105,6 +105,8 @@ MainWindow::MainWindow(QWidget *parent)
         }
     }
 
+    this->resetLogFilter = true;
+
     ui->cbCells->setCurrentIndex(1);
     ui->cbTime->setCurrentIndex(3);
     ui->cbSignal->setCurrentText(0);
@@ -137,8 +139,6 @@ void MainWindow::pollServer()
     std::vector<float> data_y;
     std::vector<float> fft_x;
     std::vector<float> fft_y;
-    std::vector<float> fft_logf_x;
-    std::vector<float> fft_logf_y;
 
     data = new char[bufferSize];
     this->x_series->clear();
@@ -208,6 +208,24 @@ void MainWindow::pollServer()
 
 //            std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
 //        }
+
+        // fft_logf is "self.history"
+        if(this->logFilter == 1) {
+            // Do nothing, return FFT as it is.
+        }
+        else if(this->resetLogFilter) {
+            this->resetLogFilter = false;
+            fft_logf_x = std::vector<float>(fft_x.size(), 0);
+            fft_logf_y = std::vector<float>(fft_y.size(), 0);
+            std::transform(fft_x.begin(), fft_x.end(), fft_logf_x.begin(), square);
+            std::transform(fft_y.begin(), fft_y.end(), fft_logf_y.begin(), square);
+        }
+        else {
+            std::transform(fft_x.begin(), fft_x.end(), fft_logf_x.begin(), fft_x.begin(),
+                           [this] (float a, float b) { return std::sqrt(this->logFilter * a * a + (1 - this->logFilter) * b); });
+            std::transform(fft_y.begin(), fft_y.end(), fft_logf_y.begin(), fft_y.begin(),
+                           [this] (float a, float b) { return std::sqrt(this->logFilter * a * a + (1 - this->logFilter) * b); });
+        }
 
         for(int i = 1; i < qMin<int>(fft_x.size(), fft_y.size()); i++) {
             xData.push_back(QPointF(i, fft_x[i]));
@@ -391,6 +409,7 @@ void MainWindow::on_cbSignal_currentIndexChanged(int index)
         ui->cbLinear->hide();
         ui->cbReverse->hide();
         ui->lblDec->show();
+        ui->lblDec->setText("Decimation");
     }
     else if(index == MODE_FFT) {
         ui->cbDecimation->show();
@@ -402,6 +421,7 @@ void MainWindow::on_cbSignal_currentIndexChanged(int index)
         ui->cbLinear->hide();
         ui->cbReverse->hide();
         ui->lblDec->show();
+        ui->lblDec->setText("Decimation");
     }
     else if(index == MODE_FFT_LOGF) {
         ui->cbDecimation->show();
@@ -412,7 +432,8 @@ void MainWindow::on_cbSignal_currentIndexChanged(int index)
         ui->cbFilter->show();
         ui->cbLinear->hide();
         ui->cbReverse->hide();
-        ui->lblDec->hide();
+        ui->lblDec->show();
+        ui->lblDec->setText("Filter");
     }
     else {
         ui->cbDecimation->hide();
@@ -516,4 +537,12 @@ void MainWindow::readFrequency()
 
     buffer[11] = '\0';
     this->samplingFrequency = atof(buffer);
+}
+
+void MainWindow::on_cbDecimation_currentIndexChanged(int index)
+{
+    if(ui->cbSignal->currentIndex() == MODE_FFT_LOGF) {
+        this->resetLogFilter = true;
+        this->logFilter = 1.0 / std::pow(10, index);
+    }
 }
