@@ -179,35 +179,41 @@ void MainWindow::pollServer()
     }
 
     if(ui->cbSignal->currentIndex() == MODE_FFT_LOGF) {
-        computeFFT(data_x, data_y, fft_x, fft_y);
-//        std::transform(fft_x.begin(), fft_x.end(), fft_x.begin(), square);
-//        std::transform(fft_y.begin(), fft_y.end(), fft_y.begin(), square);
+        std::vector<float> fft_raw_x;
+        std::vector<float> fft_raw_y;
+        computeFFT(data_x, data_y, fft_raw_x, fft_raw_y);
+        std::transform(fft_raw_x.begin(), fft_raw_x.end(), fft_raw_x.begin(), square);
+        std::transform(fft_raw_y.begin(), fft_raw_y.end(), fft_raw_y.begin(), square);
 
-//        std::vector<int> gaps;
-//        std::vector<int> diffs;
-//        double delta = pow(10, log10(this->samples/2 - 2)/(this->samples / 2 - 1));
-//        for(int i = 0; i < (this->samples / 2); i++) {
-//            gaps.push_back(pow(delta, i));
-//        }
+        std::vector<int> gaps;
+        std::vector<int> diffs;
+        double delta = pow(10, log10(this->samples/2 - 2)/(this->samples / 2 - 1));
+        for(int i = 0; i < (this->samples / 2); i++) {
+            gaps.push_back(pow(delta, i));
+        }
 
-//        for(size_t i = 1; i < gaps.size(); i++) {
-//            int diff = gaps[i] - gaps[i - 1];
-//            if(diff > 0)
-//                diffs.push_back(diff);
-//        }
+        for(size_t i = 1; i < gaps.size(); i++) {
+            int diff = gaps[i] - gaps[i - 1];
+            if(diff > 0)
+                diffs.push_back(diff);
+        }
 
-//        int start = 0;
-//        int step = 0;
-//        std::vector<float>::iterator condense_x = fft_x.begin();
-//        std::vector<float>::iterator condense_y = fft_y.begin();
-//        for(unsigned i = 0; i < diffs.size(); i++) {
-//            step = diffs[i];
+        int start = 0;
+        int step = 0;
+        std::vector<float>::iterator condense_x = fft_raw_x.begin();
+        std::vector<float>::iterator condense_y = fft_raw_y.begin();
+        for(unsigned i = 0; i < diffs.size(); i++) {
+            step = diffs[i];
+
 //            xData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ) ) );
 //            yData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ) ) );
-//            start += step;
+            fft_x.push_back(std::sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ));
+            fft_y.push_back(std::sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ));
 
-//            std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
-//        }
+            start += step;
+
+            // std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
+        }
 
         // fft_logf is "self.history"
         if(this->logFilter == 1) {
@@ -233,7 +239,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, this->samples / 2}, {min, max}, {"Frequency (Hz)", "Amplitudes (um/√Hz)"});
+        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Amplitudes (um/√Hz)"});
     }
     else if(ui->cbSignal->currentIndex() == MODE_FFT) {
         if(ui->cbDecimation->currentIndex() == FFT_1_1) {
