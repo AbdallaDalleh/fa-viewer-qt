@@ -48,8 +48,6 @@ using namespace QT_CHARTS_NAMESPACE;
 #define FA_CMD_CF       "CF\n"
 #define FA_CMD_CL       "CL\n"
 
-#define PLOT_RAW_OFFSET     5
-
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE

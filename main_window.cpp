@@ -22,8 +22,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     this->yAxis = new QValueAxis;
     this->yAxis->setTickType(QValueAxis::TicksFixed);
-    this->yAxis->setTickCount(6);
-    this->yAxis->setMinorTickCount(1);
+    this->yAxis->setMinorTickCount(2);
+    this->yAxis->applyNiceNumbers();
     this->yAxis->setTitleText("Positions");
 
     this->yLogAxis = new QLogValueAxis;
@@ -76,6 +76,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->firstID = object.value("first_id").toInt();
     this->ids     = object.value("ids").toInt();
     this->ipAddress = object.value("ip_address").toString();
+    this->port    = object.value("port").toInt();
 
     char buffer[1600];
     ssize_t bytes;
@@ -259,7 +260,6 @@ void MainWindow::pollServer()
         float sum_x = 0;
         float sum_y = 0;
         int index;
-        int scale_x = 1;
 
         for(unsigned i = 0; i < qMin(data_x.size(), data_y.size()); i++) {
             if(ui->cbDecimation->currentIndex() == DECIMATION_1_1) {
@@ -273,10 +273,10 @@ void MainWindow::pollServer()
                     sum_y += data_y[i];
                     continue;
                 }
-                index = i / 100 - 1;
+                // index = i / 100 - 1;
+                index = i;
                 item_x = sum_x / 100.0;
                 item_y = sum_y / 100.0;
-                scale_x = 100;
                 sum_x = 0;
                 sum_y = 0;
             }
@@ -295,8 +295,8 @@ void MainWindow::pollServer()
 
         modifyAxes({xAxis, yAxis},             // X, Y axes to be used
                    {xLogAxis, yLogAxis},       // X, Y axes to be hidden (detached)
-                   {0, timerPeriod / scale_x},       // X axis range
-                   {min - PLOT_RAW_OFFSET, max + PLOT_RAW_OFFSET},                             // Y axis range
+                   {0, timerPeriod},
+                   {min, max},                             // Y axis range
                    {"Time (ms)", "Positions (um)"});       // X, Y axes titles.
     }
     this->x_series->replace(xData);
@@ -464,6 +464,7 @@ void MainWindow::modifyAxes(std::tuple<QAbstractAxis *, QAbstractAxis *> useAxes
     useXAxis->setTitleText(axesTitles[0]);
     useYAxis->setRange(minY, maxY);
     useYAxis->setTitleText(axesTitles[1]);
+    ((QValueAxis*)useYAxis)->applyNiceNumbers();
 
     hideYAxis->hide();
     hideXAxis->hide();
@@ -498,7 +499,7 @@ void MainWindow::computeFFT(std::vector<float> &data_x, std::vector<float> &data
 void MainWindow::initSocket()
 {
     this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    srv.sin_port = htons(8888);
+    srv.sin_port = htons(this->port);
     srv.sin_family = AF_INET;
     srv.sin_addr.s_addr = inet_addr(this->ipAddress.toStdString().c_str());
     ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
