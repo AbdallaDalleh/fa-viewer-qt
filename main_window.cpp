@@ -272,6 +272,26 @@ void MainWindow::pollServer()
 
         modifyAxes({xAxis, yLogAxis}, {xLogAxis, yAxis}, {0, this->samples / 2}, {min, max}, {"Frequencies (Hz)", ui->cbSquared->isChecked() ? "Amplitudes (um^2/Hz)" : "Amplitudes (um/√Hz)"});
     }
+    else if(ui->cbSignal->currentIndex() == MODE_INTEGRATED)
+    {
+        computeFFT(data_x, data_y, fft_x, fft_y);
+
+        size_t N = qMin<size_t>(data_x.size(), data_y.size());
+        std::vector<float> sum_x(fft_x.size(), 0);
+        std::vector<float> sum_y(fft_y.size(), 0);
+        std::partial_sum(fft_x.begin(), fft_x.end(), sum_x.begin());
+        std::partial_sum(fft_y.begin(), fft_y.end(), sum_y.begin());
+        std::transform(sum_x.begin(), sum_x.end(), sum_x.begin(), [this, N](float a) { return std::sqrt(this->samplingFrequency / N * a); });
+        std::transform(sum_y.begin(), sum_y.end(), sum_y.begin(), [this, N](float a) { return std::sqrt(this->samplingFrequency / N * a); });
+
+        for(int i = 1; i < qMin<int>(sum_x.size(), sum_y.size()); i++) {
+            xData.push_back(QPointF(i, sum_x[i]));
+            yData.push_back(QPointF(i, sum_y[i]));
+            std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
+        }
+
+        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, this->samples / 2}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitudes (um/√Hz)"});
+    }
     else {
         float item_x;
         float item_y;
@@ -285,7 +305,7 @@ void MainWindow::pollServer()
                 item_y = data_y[i];
                 index = i;
             }
-            else if(ui->cbDecimation->currentIndex() == DECIMATION_100_1) {
+            else if(ui->cbDecimation->currentText() == "100:1") {
                 if(i == 0 || i % 100 != 0) {
                     sum_x += data_x[i];
                     sum_y += data_y[i];
@@ -381,6 +401,22 @@ void MainWindow::on_cbTime_currentIndexChanged(int index)
     QStringList items;
 
     Q_UNUSED(index);
+
+    if(index < 3) {
+        ui->cbDecimation->clear();
+        if(ui->cbSignal->currentIndex() == MODE_RAW)
+            ui->cbDecimation->addItems({"1:1", "Differential"});
+        else if(ui->cbSignal->currentIndex() == MODE_FFT)
+            ui->cbDecimation->addItems({"1:1"});
+        else if(ui->cbSignal->currentIndex() == MODE_FFT_LOGF)
+            ui->cbDecimation->addItems({"1 s"});
+        else
+            ui->cbDecimation->hide();
+    }
+    else {
+        on_cbSignal_currentIndexChanged( ui->cbSignal->currentIndex() );
+    }
+
     item = ui->cbTime->currentText();
     items = item.split(" ");
     if(items[1] == "ms") {
@@ -399,6 +435,7 @@ void MainWindow::on_cbTime_currentIndexChanged(int index)
 
 void MainWindow::on_cbSignal_currentIndexChanged(int index)
 {
+    ui->cbTime->setCurrentIndex(3);
     if(index == MODE_RAW) {
         ui->cbDecimation->show();
         ui->cbDecimation->clear();
