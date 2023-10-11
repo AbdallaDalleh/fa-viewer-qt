@@ -3,10 +3,16 @@
 
 #pragma pack(4)
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QString configFile, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    QFile file(configFile);
+    if(configFile.isEmpty() || !file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Could not open FA configuration file.", QMessageBox::Ok);
+        ::exit(1);
+    }
+
     ui->setupUi(this);
 
     x_series = new QLineSeries(this);
@@ -59,12 +65,6 @@ MainWindow::MainWindow(QWidget *parent)
     this->timer->setInterval(1000);
     QObject::connect(this->timer, &QTimer::timeout, this, &MainWindow::pollServer);
     QObject::connect(ui->btnConnect, &QPushButton::clicked, this, &MainWindow::reconnectToServer);
-
-    QFile file(":/fa-config.json");
-    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "Error", "Could not open FA configuration file.", QMessageBox::Ok);
-        QApplication::exit(0);
-    }
 
     QString id;
     QTextStream config(&file);

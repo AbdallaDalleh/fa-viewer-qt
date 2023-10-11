@@ -57,7 +57,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(QString configFile, QWidget *parent = nullptr);
     ~MainWindow();
 
     void reconnectToServer();
