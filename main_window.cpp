@@ -80,8 +80,16 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
 
     char buffer[1600];
     ssize_t bytes;
+    struct pollfd fds[1];
+    fds[0].fd = this->sock;
+    fds[0].events = POLLIN;
+    fds[0].revents = 0;
+
     initSocket();
     ::write(this->sock, FA_CMD_CL, strlen(FA_CMD_CL));
+
+    // poll(fds, 1, 1000);
+
     bytes = ::read(this->sock, buffer, sizeof(buffer));
     if(bytes >= 0) {
         buffer[bytes] = '\0';
@@ -562,10 +570,17 @@ void MainWindow::computeFFT(std::vector<float> &data_x, std::vector<float> &data
 
 void MainWindow::initSocket()
 {
+    QString ip = resolveHostname(this->ipAddress);
+    if(ip.isEmpty())
+    {
+        QMessageBox::warning(this, "Error", "Could not resolve hostname/IP " + this->ipAddress, QMessageBox::Ok);
+        ::exit(1);
+    }
+
     this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     srv.sin_port = htons(this->port);
     srv.sin_family = AF_INET;
-    srv.sin_addr.s_addr = inet_addr(this->ipAddress.toStdString().c_str());
+    srv.sin_addr.s_addr = inet_addr(ip.toStdString().c_str());
     ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
 }
 
@@ -588,4 +603,26 @@ void MainWindow::on_cbDecimation_currentIndexChanged(int index)
         this->resetLogFilter = true;
         this->logFilter = 1.0 / std::pow(10, index);
     }
+}
+
+QString MainWindow::resolveHostname(QString hostname)
+{
+    int status;
+    char ip[16];
+    struct addrinfo hints;
+    struct addrinfo *info;
+    struct sockaddr_in* host;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    status = getaddrinfo(hostname.toStdString().c_str(), "http", &hints, &info);
+    if(status != 0)
+        return "";
+
+    host = (struct sockaddr_in*) info->ai_addr;
+    strncpy(ip, inet_ntoa(host->sin_addr), sizeof(ip));
+    freeaddrinfo(info);
+    return QString(ip);
 }
