@@ -78,6 +78,7 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     this->ipAddress = object.value("ip_address").toString();
     this->port    = object.value("port").toInt();
 
+    int status;
     char buffer[1600];
     ssize_t bytes;
     struct pollfd fds[1];
@@ -87,8 +88,13 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
 
     initSocket();
     ::write(this->sock, FA_CMD_CL, strlen(FA_CMD_CL));
-
-    // poll(fds, 1, 1000);
+    status = poll(fds, 1, 1000);
+    if(status <= 0 && errno != 0 && errno != EINPROGRESS)
+    {
+        QMessageBox::warning(this, "Error", "Socket I/O Error: " + QString(strerror(errno)));
+        ::close(this->sock);
+        ::exit(5);
+    }
 
     bytes = ::read(this->sock, buffer, sizeof(buffer));
     if(bytes >= 0) {
@@ -570,6 +576,11 @@ void MainWindow::computeFFT(std::vector<float> &data_x, std::vector<float> &data
 
 void MainWindow::initSocket()
 {
+    int args;
+    int status;
+    struct timeval tv;
+    fd_set read_fds;
+    fd_set write_fds;
     QString ip = resolveHostname(this->ipAddress);
     if(ip.isEmpty())
     {
@@ -577,11 +588,44 @@ void MainWindow::initSocket()
         ::exit(1);
     }
 
-    this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    this->sock = socket(AF_INET, SOCK_STREAM, 0);
     srv.sin_port = htons(this->port);
     srv.sin_family = AF_INET;
     srv.sin_addr.s_addr = inet_addr(ip.toStdString().c_str());
-    ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
+
+    args  = fcntl(this->sock, F_GETFL, NULL);
+    args |= O_NONBLOCK;
+    status = ::fcntl(this->sock, F_SETFL, args);
+    status = ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
+    if(status < 0) {
+        if(errno == EINPROGRESS)
+        {
+            tv.tv_sec = 1;
+            tv.tv_usec = 0;
+
+            FD_ZERO(&read_fds);
+            FD_ZERO(&write_fds);
+            FD_SET(this->sock, &read_fds);
+            FD_SET(this->sock, &write_fds);
+            status = ::select(this->sock + 1, &read_fds, &write_fds, NULL, &tv);
+            if(status <= 0 && errno != EINTR)
+            {
+                QMessageBox::warning(this, "Error", "Server connection timeout.");
+                ::exit(4);
+            }
+            else {
+                ::close(this->sock);
+                this->sock = socket(AF_INET, SOCK_STREAM, 0);
+                srv.sin_port = htons(this->port);
+                srv.sin_family = AF_INET;
+                srv.sin_addr.s_addr = inet_addr(ip.toStdString().c_str());
+                args = fcntl(this->sock, F_GETFL, NULL);
+                args &= ~(O_NONBLOCK);
+                status = fcntl(this->sock, F_SETFL, args);
+                status = ::connect(this->sock, (struct sockaddr*) &srv, sizeof(struct sockaddr));
+            }
+        }
+    }
 }
 
 void MainWindow::readFrequency()

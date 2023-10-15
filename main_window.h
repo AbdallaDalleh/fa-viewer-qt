@@ -22,6 +22,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <poll.h>
+#include <fcntl.h>
 
 #include <iostream>
 #include <numeric>
