@@ -70,6 +70,15 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     QTextStream config(&file);
     QJsonDocument faConfig = QJsonDocument::fromJson(QString(config.readAll()).toUtf8());
     QJsonObject object = faConfig.object();
+    if(object.value("ip_address").isNull() || object.value("port").isNull() ||
+       object.value("id_format").isNull()  || object.value("ids").isNull()  ||
+       object.value("bpms_cell").isNull()  || object.value("cells").isNull() ||
+       object.value("first_id").isNull())
+    {
+        QMessageBox::warning(this, "Error", "Error parsing configuration file.", QMessageBox::Ok);
+        ::exit(6);
+    }
+
     this->cells   = object.value("cells").toInt();
     this->bpms    = object.value("bpms_cell").toInt();
     this->format  = object.value("id_format").toString();
@@ -77,6 +86,9 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     this->ids     = object.value("ids").toInt();
     this->ipAddress = object.value("ip_address").toString();
     this->port    = object.value("port").toInt();
+
+    ui->txtBPM->setVisible(false);
+    ui->txtBPM->setValidator(new QIntValidator(this->firstID, this->firstID + this->ids - 1));
 
     int status;
     char buffer[1600];
@@ -369,12 +381,18 @@ void MainWindow::on_cbCells_currentIndexChanged(int index)
     QString item;
 
     ui->cbID->clear();
+    ui->cbID->setVisible(index > 0);
+    ui->txtBPM->setVisible(index <= 0);
+
     if(index > 0) {
         item = QString().asprintf("SRC%02d", index);
         for(QString key : this->idsMap.keys()) {
             if(key.startsWith(item))
                 ui->cbID->addItem(key);
         }
+    }
+    else {
+        on_txtBPM_returnPressed();
     }
 }
 
@@ -669,4 +687,12 @@ QString MainWindow::resolveHostname(QString hostname)
     strncpy(ip, inet_ntoa(host->sin_addr), sizeof(ip));
     freeaddrinfo(info);
     return QString(ip);
+}
+
+void MainWindow::on_txtBPM_returnPressed()
+{
+    this->message = "S" + QString::number(ui->txtBPM->text().toInt()) + "\n";
+    this->timer->stop();
+    ::close(this->sock);
+    reconnectToServer();
 }

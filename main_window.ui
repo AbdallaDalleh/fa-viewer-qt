@@ -48,6 +48,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QLineEdit" name="txtBPM">
+        <property name="text">
+         <string>1</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QComboBox" name="cbID">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">

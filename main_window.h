@@ -92,6 +92,8 @@ private slots:
 
     void on_cbDecimation_currentIndexChanged(int index);
 
+    void on_txtBPM_returnPressed();
+
 private:
     Ui::MainWindow *ui;
 
