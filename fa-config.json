@@ -1,5 +1,5 @@
 {
-    "ip_address": "10.4.1.22",
+    "ip_address": "svr-ma-arch02",
     "port":     8888,
     "cells":    16,
     "ids":      64,

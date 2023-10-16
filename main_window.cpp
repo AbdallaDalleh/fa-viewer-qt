@@ -56,6 +56,10 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     this->y_series->attachAxis(this->xAxis);
     this->y_series->attachAxis(this->yAxis);
 
+    QFont font;
+    font.setBold(true);
+    font.setPixelSize(18);
+    chart->setTitleFont(font);
     chart->legend()->show();
 
     ui->plot->setChart(chart);
@@ -100,7 +104,7 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
 
     initSocket();
     ::write(this->sock, FA_CMD_CL, strlen(FA_CMD_CL));
-    status = poll(fds, 1, 1000);
+    status = ::poll(fds, 1, 1000);
     if(status <= 0 && errno != 0 && errno != EINPROGRESS)
     {
         QMessageBox::warning(this, "Error", "Socket I/O Error: " + QString(strerror(errno)));
@@ -143,8 +147,8 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    delete ui;
     ::close(sock);
+    delete ui;
 }
 
 void MainWindow::pollServer()
@@ -201,6 +205,8 @@ void MainWindow::pollServer()
 
     if(std::all_of(data_x.begin(), data_x.end(), compare_zero) &&
        std::all_of(data_y.begin(), data_y.end(), compare_zero)) {
+        if(!this->chart->title().endsWith("(NC)"))
+            this->chart->setTitle(this->chart->title() + " (NC)");
         return;
     }
 
@@ -363,11 +369,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(item_x, item_y, min, max);
         }
 
-        modifyAxes({xAxis, yAxis},             // X, Y axes to be used
-                   {xLogAxis, yLogAxis},       // X, Y axes to be hidden (detached)
-                   {0, timerPeriod},
-                   {min, max},                             // Y axis range
-                   {"Time (ms)", "Positions (um)"});       // X, Y axes titles.
+        modifyAxes({xAxis, yAxis}, {xLogAxis, yLogAxis}, {0, timerPeriod}, {min, max}, {"Time (ms)", "Positions (um)"});
     }
     this->x_series->replace(xData);
     this->y_series->replace(yData);
@@ -400,6 +402,7 @@ void MainWindow::on_cbID_currentIndexChanged(const QString &arg1)
 {
     int currentID;
 
+    this->chart->setTitle(arg1);
     currentID = this->idsMap[arg1];
     this->message = "S" + QString::number(currentID) + "\n";
     this->timer->stop();
@@ -437,8 +440,6 @@ void MainWindow::on_cbTime_currentIndexChanged(int index)
 {
     QString item;
     QStringList items;
-
-    Q_UNUSED(index);
 
     if(index < 3) {
         ui->cbDecimation->clear();
@@ -691,8 +692,19 @@ QString MainWindow::resolveHostname(QString hostname)
 
 void MainWindow::on_txtBPM_returnPressed()
 {
-    this->message = "S" + QString::number(ui->txtBPM->text().toInt()) + "\n";
-    this->timer->stop();
-    ::close(this->sock);
-    reconnectToServer();
+    int id;
+
+    id = ui->txtBPM->text().toInt();
+    if(id >= this->firstID && id <= (this->firstID + this->ids - 1))
+    {
+        for(auto item : this->idsMap.toStdMap()) {
+            if(item.second == id)
+                this->chart->setTitle(item.first);
+        }
+
+        this->message = "S" + QString::number(ui->txtBPM->text().toInt()) + "\n";
+        this->timer->stop();
+        ::close(this->sock);
+        reconnectToServer();
+    }
 }
