@@ -169,12 +169,26 @@ void MainWindow::pollServer()
     std::vector<float> data_y;
     std::vector<float> fft_x;
     std::vector<float> fft_y;
+    struct pollfd fds[1];
+    int status;
 
     data = new char[bufferSize];
     this->x_series->clear();
     this->y_series->clear();
     max = std::numeric_limits<float>::min();
     min = std::numeric_limits<float>::max();
+
+    fds[0].fd = this->sock;
+    fds[0].events = POLLIN;
+    fds[0].revents = 0;
+    status = ::poll(fds, 1, 1000 * this->timerPeriod);
+    if(status <= 0 && errno != 0 && errno != EINPROGRESS)
+    {
+        this->statusBar()->showMessage( QString::asprintf("FA Server disconnected. Code %d: %s", errno, strerror(errno)) );
+        ::close(this->sock);
+        return;
+    }
+    this->statusBar()->showMessage("FA Server Running ...");
 
     int buffer = bufferSize;
     int ptr = 0;

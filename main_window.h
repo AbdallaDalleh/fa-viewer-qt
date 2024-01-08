@@ -13,6 +13,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
+#include <QStatusBar>
 
 #include <cstdio>
 #include <cmath>
