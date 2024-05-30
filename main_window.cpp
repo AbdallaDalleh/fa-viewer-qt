@@ -188,7 +188,6 @@ void MainWindow::pollServer()
         ::close(this->sock);
         return;
     }
-    this->statusBar()->showMessage("FA Server Running ...");
 
     int buffer = bufferSize;
     int ptr = 0;
@@ -201,6 +200,8 @@ void MainWindow::pollServer()
     }
     else
         size += recv(sock, data, buffer, MSG_WAITALL);
+
+    this->statusBar()->showMessage("FA Server Running ...");
 
     for(i = 0; i < size && size > 27; i += 8) {
         memcpy(&raw_x, data + i, sizeof(int32_t));
@@ -240,8 +241,9 @@ void MainWindow::pollServer()
 
         for(size_t i = 1; i < gaps.size(); i++) {
             int diff = gaps[i] - gaps[i - 1];
-            if(diff > 0)
+            if(diff > 0) {
                 diffs.push_back(diff);
+            }
         }
 
         int start = 0;
@@ -251,14 +253,22 @@ void MainWindow::pollServer()
         for(unsigned i = 0; i < diffs.size(); i++) {
             step = diffs[i];
 
-//            xData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ) ) );
-//            yData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ) ) );
+            // xData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ) ) );
+            // yData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ) ) );
             fft_x.push_back(std::sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ));
             fft_y.push_back(std::sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ));
 
             start += step;
 
             // std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
+        }
+
+        if (ui->cbFilter->isChecked()) {
+            std::vector<float> p_sum = std::vector<float>(diffs.size(), 0);
+            std::partial_sum(diffs.begin(), diffs.end(), p_sum.begin());
+            std::transform(p_sum.begin(), p_sum.end(), p_sum.begin(), [this](float a) { return this->samplingFrequency * a / this->samples; });
+            std::transform(fft_x.begin(), fft_x.end(), p_sum.begin(), fft_x.begin(), std::multiplies<float>());
+            std::transform(fft_y.begin(), fft_y.end(), p_sum.begin(), fft_y.begin(), std::multiplies<float>());
         }
 
         // fft_logf is "self.history"
@@ -326,13 +336,53 @@ void MainWindow::pollServer()
     }
     else if(ui->cbSignal->currentIndex() == MODE_INTEGRATED)
     {
-        computeFFT(data_x, data_y, fft_x, fft_y);
+        std::vector<float> fft_raw_x;
+        std::vector<float> fft_raw_y;
+        std::vector<int> gaps;
+        std::vector<int> diffs;
+        double delta = pow(10, log10(this->samples/2 - 2)/(this->samples / 2 - 1));
+        for(int i = 0; i < (this->samples / 2) - 1; i++) {
+            gaps.push_back(pow(delta, i));
+        }
+
+        for(size_t i = 1; i < gaps.size(); i++) {
+            int diff = gaps[i] - gaps[i - 1];
+            if(diff > 0) {
+                diffs.push_back(diff);
+            }
+        }
+
+        std::cout << "Gaps: " << gaps.size() << std::endl;
+        std::cout << "Diffs: " << diffs.size() << std::endl;
+
+        computeFFT(data_x, data_y, fft_raw_x, fft_raw_y);
+        std::transform(fft_raw_x.begin(), fft_raw_x.end(), fft_raw_x.begin(), square);
+        std::transform(fft_raw_y.begin(), fft_raw_y.end(), fft_raw_y.begin(), square);
+
+        int start = 0;
+        int step = 0;
+        std::vector<float>::iterator condense_x = fft_raw_x.begin() + 2;
+        std::vector<float>::iterator condense_y = fft_raw_y.begin() + 2;
+        for(unsigned i = 0; i < diffs.size(); i++) {
+            step = diffs[i];
+
+            // xData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_x + start, condense_x + start + step, 0.0) ) ) );
+            // yData.push_back( QPointF(i + 1, sqrt( std::accumulate(condense_y + start, condense_y + start + step, 0.0) ) ) );
+            fft_x.push_back( std::accumulate(condense_x + start, condense_x + start + step, 0.0) );
+            fft_y.push_back( std::accumulate(condense_y + start, condense_y + start + step, 0.0) );
+
+            start += step;
+
+            // std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
+        }
 
         size_t N = qMin<size_t>(data_x.size(), data_y.size());
         std::vector<float> sum_x(fft_x.size(), 0);
         std::vector<float> sum_y(fft_y.size(), 0);
+
         std::partial_sum(fft_x.begin(), fft_x.end(), sum_x.begin());
         std::partial_sum(fft_y.begin(), fft_y.end(), sum_y.begin());
+
         std::transform(sum_x.begin(), sum_x.end(), sum_x.begin(), [this, N](float a) { return std::sqrt(this->samplingFrequency / N * a); });
         std::transform(sum_y.begin(), sum_y.end(), sum_y.begin(), [this, N](float a) { return std::sqrt(this->samplingFrequency / N * a); });
 
@@ -342,7 +392,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, this->samples / 2}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitudes (um/√Hz)"});
+        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitudes (um/√Hz)"});
     }
     else {
         float item_x;
@@ -431,6 +481,12 @@ void MainWindow::reconnectToServer()
     initSocket();
     ::write(sock, message.toStdString().c_str(), message.length());
     ::read(sock, &c, 1);
+
+    if (c != 0) {
+        this->statusBar()->showMessage("FA Server: No data currently available");
+        return;
+    }
+
     this->timer->start();
 }
 
