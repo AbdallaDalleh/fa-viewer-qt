@@ -27,10 +27,11 @@ HEADERS += \
 FORMS += \
     main_window.ui
 
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+TARGET           = fa-viewer-qt
+QMAKE_DISTCLEAN += $$(HOME)/bin/$$TARGET
+
+target.path = $$(HOME)/bin
+INSTALLS += target
 
 RESOURCES += \
     resources.qrc
