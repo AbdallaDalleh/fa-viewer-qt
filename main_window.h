@@ -14,6 +14,7 @@
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QStatusBar>
+#include <QToolTip>
 
 #include <cstdio>
 #include <cmath>
@@ -94,6 +95,8 @@ private slots:
     void on_cbDecimation_currentIndexChanged(int index);
 
     void on_txtBPM_returnPressed();
+
+    bool eventFilter(QObject *watched, QEvent *event);
 
 private:
     Ui::MainWindow *ui;

@@ -64,6 +64,8 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
 
     ui->plot->setChart(chart);
     ui->plot->setRenderHint(QPainter::Antialiasing);
+    ui->plot->viewport()->setMouseTracking(true);
+    ui->plot->viewport()->installEventFilter(this);
 
     this->timer = new QTimer(this);
     this->timer->setInterval(1000);
@@ -777,4 +779,25 @@ void MainWindow::on_txtBPM_returnPressed()
         ::close(this->sock);
         reconnectToServer();
     }
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == ui->plot->viewport() && event->type() == QEvent::MouseMove) {
+        auto e = static_cast<QMouseEvent*>(event);
+
+        if(!this->chart->plotArea().contains(e->pos())) {
+            QToolTip::hideText();
+            return true;
+        }
+
+        QPointF valueX = this->chart->mapToValue(e->pos(), this->x_series);
+        QPointF valueY = this->chart->mapToValue(e->pos(), this->y_series);
+        QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um", (int)valueX.x(), valueX.y(), valueY.y());
+        QToolTip::showText(e->globalPos(), text, ui->plot);
+
+        return true;
+    }
+
+    return QMainWindow::eventFilter(watched, event);
 }
