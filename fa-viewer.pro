@@ -16,11 +16,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    chart.cpp \
+    chartview.cpp \
     fa_server.cpp \
     main.cpp \
     main_window.cpp
 
 HEADERS += \
+    chart.h \
+    chartview.h \
     fa_server.h \
     main_window.h
 

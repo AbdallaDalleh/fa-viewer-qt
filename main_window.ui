@@ -14,9 +14,9 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,0">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
     <item>
-     <widget class="QChartView" name="plot" native="true"/>
+     <widget class="QWidget" name="plot" native="true"/>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
@@ -360,14 +360,6 @@
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QChartView</class>
-   <extends>QWidget</extends>
-   <header location="global">QChartView</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -14,6 +14,11 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     }
 
     ui->setupUi(this);
+    if (!ui->plot->layout()) {
+        auto layout = new QVBoxLayout(ui->plot);
+        layout->setSpacing(0);
+        layout->setContentsMargins(0, 0, 0, 0);
+    }
 
     x_series = new QLineSeries(this);
     y_series = new QLineSeries(this);
@@ -44,7 +49,7 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     this->xLogAxis->setMinorGridLineVisible(false);
     this->xLogAxis->setLabelFormat("%g");
 
-    chart = new QChart;
+    chart = new Chart;
     chart->addSeries(x_series);
     chart->addSeries(y_series);
     this->chart->addAxis(this->xAxis, Qt::AlignBottom);
@@ -62,10 +67,11 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     chart->setTitleFont(font);
     chart->legend()->show();
 
-    ui->plot->setChart(chart);
-    ui->plot->setRenderHint(QPainter::Antialiasing);
-    ui->plot->viewport()->setMouseTracking(true);
-    ui->plot->viewport()->installEventFilter(this);
+    chartView = new ChartView(chart);
+    // chartView->setChart(chart);
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->viewport()->setMouseTracking(true);
+    ui->plot->layout()->addWidget(chartView);
 
     this->timer = new QTimer(this);
     this->timer->setInterval(1000);
@@ -173,6 +179,11 @@ void MainWindow::pollServer()
     std::vector<float> fft_y;
     struct pollfd fds[1];
     int status;
+
+    if (!chartView->m_isRunning) {
+        timer->stop();
+        return;
+    }
 
     data = new char[bufferSize];
     this->x_series->clear();
@@ -439,7 +450,7 @@ void MainWindow::pollServer()
     }
     this->x_series->replace(xData);
     this->y_series->replace(yData);
-    ui->plot->update();
+    chartView->update();
 
     delete[] data;
 }
@@ -489,6 +500,7 @@ void MainWindow::reconnectToServer()
         return;
     }
 
+    chartView->m_isRunning = true;
     this->timer->start();
 }
 
@@ -783,20 +795,23 @@ void MainWindow::on_txtBPM_returnPressed()
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == ui->plot->viewport() && event->type() == QEvent::MouseMove) {
-        auto e = static_cast<QMouseEvent*>(event);
+    if (watched == chartView->viewport())
+    {
+        if (event->type() == QEvent::MouseMove) {
 
-        if(!this->chart->plotArea().contains(e->pos())) {
-            QToolTip::hideText();
+            auto e = static_cast<QMouseEvent*>(event);
+            if(!this->chart->plotArea().contains(e->pos())) {
+                QToolTip::hideText();
+                return true;
+            }
+
+            QPointF valueX = this->chart->mapToValue(e->pos(), this->x_series);
+            QPointF valueY = this->chart->mapToValue(e->pos(), this->y_series);
+            QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um", (int)valueX.x(), valueX.y(), valueY.y());
+            QToolTip::showText(e->globalPos(), text, chartView);
+
             return true;
         }
-
-        QPointF valueX = this->chart->mapToValue(e->pos(), this->x_series);
-        QPointF valueY = this->chart->mapToValue(e->pos(), this->y_series);
-        QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um", (int)valueX.x(), valueX.y(), valueY.y());
-        QToolTip::showText(e->globalPos(), text, ui->plot);
-
-        return true;
     }
 
     return QMainWindow::eventFilter(watched, event);

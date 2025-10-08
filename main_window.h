@@ -33,6 +33,9 @@ using std::endl;
 
 #include <opencv2/core/core.hpp>
 
+#include <chart.h>
+#include <chartview.h>
+
 using namespace QT_CHARTS_NAMESPACE;
 
 #define MAX_BUFFER_SIZE (80000)
@@ -102,7 +105,11 @@ private:
     Ui::MainWindow *ui;
 
     QTimer* timer;
-    QChart* chart;
+
+    QChart x;
+    Chart* chart;
+    ChartView* chartView;
+
     QLineSeries* x_series;
     QLineSeries* y_series;
     QValueAxis* xAxis;
@@ -132,5 +139,6 @@ private:
     int timerPeriod;
     bool resetLogFilter;
     float logFilter;
+    bool m_isTouching;
 };
 #endif // MAINWINDOW_H
