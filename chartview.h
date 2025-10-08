@@ -34,6 +34,7 @@
 #include <QtWidgets/QRubberBand>
 #include <QToolTip>
 #include <QTouchEvent>
+#include <QLineSeries>
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -45,6 +46,11 @@ public:
     ChartView(QChart *chart, QWidget *parent = 0);
 
     bool m_isRunning;
+    QPoint m_globalPos;
+    qreal m_tooltipData[3];
+    int m_mouseIndex;
+
+    void displayTooltip(QMouseEvent* e);
 
 //![2]
 protected:

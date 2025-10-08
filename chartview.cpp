@@ -37,6 +37,7 @@ ChartView::ChartView(QChart *chart, QWidget *parent) :
     m_isTouching(false)
 {
     m_isRunning = true;
+    m_mouseIndex = 0;
     setRubberBand(QChartView::RectangleRubberBand);
     setAttribute(Qt::WA_AcceptTouchEvents, true);
     viewport()->setAttribute(Qt::WA_AcceptTouchEvents, true);
@@ -63,19 +64,12 @@ bool ChartView::viewportEvent(QEvent *event)
     }
     if (event->type() == QEvent::MouseMove) {
         auto e = static_cast<QMouseEvent*>(event);
-        if(!chart()->plotArea().contains(e->pos())) {
+        if(!chart()->plotArea().contains(e->pos()) || chart()->series().length() != 2) {
             QToolTip::hideText();
             return true;
         }
-        if (chart()->series().length() != 2)
-            return true;
 
-        auto xSeries = chart()->series().at(0);
-        auto ySeries = chart()->series().at(1);
-        QPointF valueX = chart()->mapToValue(e->pos(), xSeries);
-        QPointF valueY = chart()->mapToValue(e->pos(), ySeries);
-        QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um", (int)valueX.x(), valueX.y(), valueY.y());
-        QToolTip::showText(e->globalPos(), text, this);
+        displayTooltip(e);
     }
     return QChartView::viewportEvent(event);
 }
@@ -93,6 +87,14 @@ void ChartView::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_isTouching)
         return;
+
+    auto e = static_cast<QMouseEvent*>(event);
+    if(!chart()->plotArea().contains(e->pos()) || chart()->series().length() != 2) {
+        QToolTip::hideText();
+        return;
+    }
+
+    displayTooltip(e);
     QChartView::mouseMoveEvent(event);
 }
 
@@ -136,4 +138,19 @@ void ChartView::keyPressEvent(QKeyEvent *event)
         QGraphicsView::keyPressEvent(event);
         break;
     }
+}
+
+void ChartView::displayTooltip(QMouseEvent* e)
+{
+    auto series = chart()->series();
+    auto xSeries = qobject_cast<QLineSeries*>(series.at(0));
+    auto ySeries = qobject_cast<QLineSeries*>(series.at(1));
+    int index = chart()->mapToValue(e->pos(), xSeries).x();
+    QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um", index, xSeries->at(index).y(), ySeries->at(index).y());
+    m_globalPos = e->globalPos();
+    m_mouseIndex = index;
+    m_tooltipData[0] = index;
+    m_tooltipData[1] = xSeries->at(index).y();
+    m_tooltipData[2] = ySeries->at(index).y();
+    QToolTip::showText(e->globalPos(), text, this, this->rect(), 20000);
 }

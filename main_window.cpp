@@ -448,6 +448,13 @@ void MainWindow::pollServer()
 
         modifyAxes({xAxis, yAxis}, {xLogAxis, yLogAxis}, {0, timerPeriod}, {min, max}, {"Time (ms)", "Positions (um)"});
     }
+
+    QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um",
+                                    (int)chartView->m_mouseIndex,
+                                    xData.at(chartView->m_mouseIndex).y(),
+                                    yData.at(chartView->m_mouseIndex).y());
+    QToolTip::showText(chartView->m_globalPos, text);
+
     this->x_series->replace(xData);
     this->y_series->replace(yData);
     chartView->update();
