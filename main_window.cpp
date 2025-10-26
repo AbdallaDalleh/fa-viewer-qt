@@ -308,7 +308,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Amplitudes (um/√Hz)"});
+        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Amplitude (um/√Hz)"});
     }
     else if(ui->cbSignal->currentIndex() == MODE_FFT) {
         if(ui->cbDecimation->currentIndex() == FFT_1_1) {
@@ -345,7 +345,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xAxis, yLogAxis}, {xLogAxis, yAxis}, {0, this->samples / 2}, {min, max}, {"Frequencies (Hz)", ui->cbSquared->isChecked() ? "Amplitudes (um^2/Hz)" : "Amplitudes (um/√Hz)"});
+        modifyAxes({xAxis, yLogAxis}, {xLogAxis, yAxis}, {0, this->samples / 2}, {min, max}, {"Frequencies (Hz)", ui->cbSquared->isChecked() ? "Amplitudes (um^2/Hz)" : "Amplitude (um/√Hz)"});
     }
     else if(ui->cbSignal->currentIndex() == MODE_INTEGRATED)
     {
@@ -405,7 +405,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitudes (um/√Hz)"});
+        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitude (um)"});
     }
     else {
         float item_x;
@@ -453,7 +453,7 @@ void MainWindow::pollServer()
                                     (int)chartView->m_mouseIndex,
                                     xData.at(chartView->m_mouseIndex).y(),
                                     yData.at(chartView->m_mouseIndex).y());
-    QToolTip::showText(chartView->m_globalPos, text);
+    // QToolTip::showText(chartView->m_globalPos, text);
 
     this->x_series->replace(xData);
     this->y_series->replace(yData);
