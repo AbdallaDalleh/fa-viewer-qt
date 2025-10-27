@@ -216,7 +216,7 @@ void MainWindow::pollServer()
 
     this->statusBar()->showMessage("FA Server Running ...");
 
-    for(i = 0; i < size && size > 27; i += 8) {
+    for (i = 0; size > 27 && i < size; i += 8) {
         memcpy(&raw_x, data + i, sizeof(int32_t));
         memcpy(&raw_y, data + i + 4, sizeof(int32_t));
 
@@ -393,8 +393,18 @@ void MainWindow::pollServer()
         std::vector<float> sum_x(fft_x.size(), 0);
         std::vector<float> sum_y(fft_y.size(), 0);
 
+        if (ui->cbReverse->isChecked()) {
+            std::reverse(fft_x.begin(), fft_x.end());
+            std::reverse(fft_y.begin(), fft_y.end());
+        }
+
         std::partial_sum(fft_x.begin(), fft_x.end(), sum_x.begin());
         std::partial_sum(fft_y.begin(), fft_y.end(), sum_y.begin());
+
+        if (ui->cbReverse->isChecked()) {
+            std::reverse(sum_x.begin(), sum_x.end());
+            std::reverse(sum_y.begin(), sum_y.end());
+        }
 
         std::transform(sum_x.begin(), sum_x.end(), sum_x.begin(), [this, N](float a) { return std::sqrt(this->samplingFrequency / N * a); });
         std::transform(sum_y.begin(), sum_y.end(), sum_y.begin(), [this, N](float a) { return std::sqrt(this->samplingFrequency / N * a); });
@@ -449,10 +459,10 @@ void MainWindow::pollServer()
         modifyAxes({xAxis, yAxis}, {xLogAxis, yLogAxis}, {0, timerPeriod}, {min, max}, {"Time (ms)", "Positions (um)"});
     }
 
-    QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um",
-                                    (int)chartView->m_mouseIndex,
-                                    xData.at(chartView->m_mouseIndex).y(),
-                                    yData.at(chartView->m_mouseIndex).y());
+     QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um",
+                                     (int)chartView->m_mouseIndex,
+                                     xData.at(chartView->m_mouseIndex).y(),
+                                     yData.at(chartView->m_mouseIndex).y());
     // QToolTip::showText(chartView->m_globalPos, text);
 
     this->x_series->replace(xData);
