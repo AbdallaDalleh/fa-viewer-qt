@@ -101,6 +101,8 @@ private slots:
 
     bool eventFilter(QObject *watched, QEvent *event);
 
+    void displayTooltip();
+
 private:
     Ui::MainWindow *ui;
 

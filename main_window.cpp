@@ -151,6 +151,7 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     on_cbSignal_currentIndexChanged(0);
     readFrequency();
     reconnectToServer();
+    installEventFilter(this);
 }
 
 MainWindow::~MainWindow()
@@ -464,15 +465,11 @@ void MainWindow::pollServer()
         modifyAxes({xAxis, yAxis}, {xLogAxis, yLogAxis}, {0, timerPeriod}, {min, max}, {"Time (ms)", "Positions (um)"});
     }
 
-     QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um",
-                                     (int)chartView->m_mouseIndex,
-                                     xData.at(chartView->m_mouseIndex).y(),
-                                     yData.at(chartView->m_mouseIndex).y());
-    // QToolTip::showText(chartView->m_globalPos, text);
-
     this->x_series->replace(xData);
     this->y_series->replace(yData);
     chartView->update();
+
+    displayTooltip();
 
     delete[] data;
 }
@@ -817,24 +814,38 @@ void MainWindow::on_txtBPM_returnPressed()
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == chartView->viewport())
-    {
-        if (event->type() == QEvent::MouseMove) {
-
-            auto e = static_cast<QMouseEvent*>(event);
-            if(!this->chart->plotArea().contains(e->pos())) {
-                QToolTip::hideText();
-                return true;
-            }
-
-            QPointF valueX = this->chart->mapToValue(e->pos(), this->x_series);
-            QPointF valueY = this->chart->mapToValue(e->pos(), this->y_series);
-            QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um", (int)valueX.x(), valueX.y(), valueY.y());
-            QToolTip::showText(e->globalPos(), text, chartView);
-
-            return true;
-        }
+    if (watched == this && event->type() == QEvent::HoverMove) {
+        displayTooltip();
+        return true;
     }
 
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::displayTooltip()
+{
+    QString msg = "Frequency: %.0f Hz\nX: %f %s | Y: %f %s";
+    QString unit;
+    int scale = 1;
+    if (ui->cbSignal->currentIndex() == MODE_FFT)
+        unit = "um/√Hz";
+    else if (ui->cbSignal->currentIndex() == MODE_FFT_LOGF)
+        unit = ui->cbSquared->isChecked() ? "um^2/Hz" : "um/√Hz";
+    else {
+        unit = "um";
+        if (ui->cbSignal->currentIndex() == MODE_RAW) {
+            scale = 10;
+            msg = "Time: %.1f ms\nX: %.3f %s | Y: %.3f %s";
+        }
+    }
+
+    if(this->isActiveWindow() && chart->plotArea().contains(chartView->m_pos)) {
+        QString text = QString::asprintf(msg.toStdString().c_str(),
+                                        chartView->m_mouseIndex,
+                                        x_series->at(chartView->m_mouseIndex * scale).y(), unit.toStdString().c_str(),
+                                        y_series->at(chartView->m_mouseIndex * scale).y(), unit.toStdString().c_str());
+        QToolTip::showText(chartView->m_globalPos, text);
+    }
+    else
+        QToolTip::hideText();
 }

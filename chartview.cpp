@@ -148,6 +148,7 @@ void ChartView::displayTooltip(QMouseEvent* e)
     qreal index = chart()->mapToValue(e->pos(), xSeries).x();
     QString text = QString::asprintf("Time: %.1f ms\nX: %.3f um | Y: %.3f um", index, xSeries->at(index * 10).y(), ySeries->at(index * 10).y());
     m_globalPos = e->globalPos();
+    m_pos = e->pos();
     m_mouseIndex = index;
-    QToolTip::showText(e->globalPos(), text/*, this, this->rect(), 20000*/);
+    // QToolTip::showText(e->globalPos(), text/*, this, this->rect(), 20000*/);
 }

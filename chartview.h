@@ -47,8 +47,9 @@ public:
 
     bool m_isRunning;
     QPoint m_globalPos;
+    QPoint m_pos;
     qreal m_tooltipData[3];
-    int m_mouseIndex;
+    qreal m_mouseIndex;
 
     void displayTooltip(QMouseEvent* e);
 
