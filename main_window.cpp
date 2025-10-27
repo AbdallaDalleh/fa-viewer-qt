@@ -415,7 +415,12 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(xData.last().y(), yData.last().y(), min, max);
         }
 
-        modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitude (um)"});
+        if (ui->cbLinear->isChecked()) {
+            modifyAxes({xLogAxis, yAxis}, {xAxis, yLogAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitude (um)"});
+        }
+        else {
+            modifyAxes({xLogAxis, yLogAxis}, {xAxis, yAxis}, {1, diffs.size()}, {min, max}, {"Frequency (Hz)", "Cumulative Amplitude (um)"});
+        }
     }
     else {
         float item_x;
