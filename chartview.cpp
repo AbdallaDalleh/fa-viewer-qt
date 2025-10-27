@@ -106,7 +106,7 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event)
 
     // Because we disabled animations when touch event was detected
     // we must put them back on.
-    chart()->setAnimationOptions(QChart::SeriesAnimations);
+//    chart()->setAnimationOptions(QChart::SeriesAnimations);
 
     QChartView::mouseReleaseEvent(event);
 }
@@ -145,12 +145,9 @@ void ChartView::displayTooltip(QMouseEvent* e)
     auto series = chart()->series();
     auto xSeries = qobject_cast<QLineSeries*>(series.at(0));
     auto ySeries = qobject_cast<QLineSeries*>(series.at(1));
-    int index = chart()->mapToValue(e->pos(), xSeries).x();
-    QString text = QString::asprintf("Time: %d ms\nX: %.3f um | Y: %.3f um", index, xSeries->at(index).y(), ySeries->at(index).y());
+    qreal index = chart()->mapToValue(e->pos(), xSeries).x();
+    QString text = QString::asprintf("Time: %.1f ms\nX: %.3f um | Y: %.3f um", index, xSeries->at(index * 10).y(), ySeries->at(index * 10).y());
     m_globalPos = e->globalPos();
     m_mouseIndex = index;
-    m_tooltipData[0] = index;
-    m_tooltipData[1] = xSeries->at(index).y();
-    m_tooltipData[2] = ySeries->at(index).y();
-    QToolTip::showText(e->globalPos(), text, this, this->rect(), 20000);
+    QToolTip::showText(e->globalPos(), text/*, this, this->rect(), 20000*/);
 }
