@@ -366,9 +366,6 @@ void MainWindow::pollServer()
             }
         }
 
-        std::cout << "Gaps: " << gaps.size() << std::endl;
-        std::cout << "Diffs: " << diffs.size() << std::endl;
-
         computeFFT(data_x, data_y, fft_raw_x, fft_raw_y);
         std::transform(fft_raw_x.begin(), fft_raw_x.end(), fft_raw_x.begin(), square);
         std::transform(fft_raw_y.begin(), fft_raw_y.end(), fft_raw_y.begin(), square);
@@ -469,7 +466,10 @@ void MainWindow::pollServer()
     this->y_series->replace(yData);
     chartView->update();
 
-    displayTooltip();
+    if (chartView->m_isMouseOver)
+        displayTooltip();
+    else
+        QToolTip::hideText();
 
     delete[] data;
 }

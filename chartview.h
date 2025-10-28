@@ -46,12 +46,10 @@ public:
     ChartView(QChart *chart, QWidget *parent = 0);
 
     bool m_isRunning;
+    bool m_isMouseOver;
     QPoint m_globalPos;
     QPoint m_pos;
-    qreal m_tooltipData[3];
     qreal m_mouseIndex;
-
-    void displayTooltip(QMouseEvent* e);
 
 //![2]
 protected:
@@ -60,6 +58,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void keyPressEvent(QKeyEvent *event);
+    bool eventFilter(QObject* object, QEvent* e);
 //![2]
 
 private:

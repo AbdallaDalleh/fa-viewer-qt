@@ -37,6 +37,7 @@ ChartView::ChartView(QChart *chart, QWidget *parent) :
     m_isTouching(false)
 {
     m_isRunning = true;
+    m_isMouseOver = false;
     m_mouseIndex = 0;
     setRubberBand(QChartView::RectangleRubberBand);
     setAttribute(Qt::WA_AcceptTouchEvents, true);
@@ -48,66 +49,28 @@ ChartView::ChartView(QChart *chart, QWidget *parent) :
 
 bool ChartView::viewportEvent(QEvent *event)
 {
-    if (event->type() == QEvent::TouchBegin) {
-
-        std::cout << "viewportEvent: " << event->type() << std::endl;
-        // By default touch events are converted to mouse events. So
-        // after this event we will get a mouse event also but we want
-        // to handle touch events as gestures only. So we need this safeguard
-        // to block mouse events that are actually generated from touch.
-        m_isTouching = true;
-
-        // Turn off animations when handling gestures they
-        // will only slow us down.
-        chart()->setAnimationOptions(QChart::NoAnimation);
-        return true;
-    }
-    if (event->type() == QEvent::MouseMove) {
-        auto e = static_cast<QMouseEvent*>(event);
-        if(!chart()->plotArea().contains(e->pos()) || chart()->series().length() != 2) {
-            QToolTip::hideText();
-            return true;
-        }
-
-        displayTooltip(e);
-    }
     return QChartView::viewportEvent(event);
 }
 
 void ChartView::mousePressEvent(QMouseEvent *event)
 {
     m_isRunning = false;
-    if (m_isTouching)
-        return;
-
     QChartView::mousePressEvent(event);
 }
 
 void ChartView::mouseMoveEvent(QMouseEvent *event)
 {
-    if (m_isTouching)
-        return;
-
     auto e = static_cast<QMouseEvent*>(event);
-    if(!chart()->plotArea().contains(e->pos()) || chart()->series().length() != 2) {
-        QToolTip::hideText();
-        return;
-    }
-
-    displayTooltip(e);
+    auto xSeries = qobject_cast<QLineSeries*>(chart()->series().at(0));
+    qreal index = chart()->mapToValue(e->pos(), xSeries).x();
+    m_globalPos = e->globalPos();
+    m_pos = e->pos();
+    m_mouseIndex = index;
     QChartView::mouseMoveEvent(event);
 }
 
 void ChartView::mouseReleaseEvent(QMouseEvent *event)
 {
-    std::cout << "mouseReleaseEvent: " << event->type() << std::endl;
-    if (m_isTouching)
-        m_isTouching = false;
-
-    // Because we disabled animations when touch event was detected
-    // we must put them back on.
-//    chart()->setAnimationOptions(QChart::SeriesAnimations);
-
     QChartView::mouseReleaseEvent(event);
 }
 
@@ -140,15 +103,12 @@ void ChartView::keyPressEvent(QKeyEvent *event)
     }
 }
 
-void ChartView::displayTooltip(QMouseEvent* e)
+bool ChartView::eventFilter(QObject *object, QEvent *e)
 {
-    auto series = chart()->series();
-    auto xSeries = qobject_cast<QLineSeries*>(series.at(0));
-    auto ySeries = qobject_cast<QLineSeries*>(series.at(1));
-    qreal index = chart()->mapToValue(e->pos(), xSeries).x();
-    QString text = QString::asprintf("Time: %.1f ms\nX: %.3f um | Y: %.3f um", index, xSeries->at(index * 10).y(), ySeries->at(index * 10).y());
-    m_globalPos = e->globalPos();
-    m_pos = e->pos();
-    m_mouseIndex = index;
-    // QToolTip::showText(e->globalPos(), text/*, this, this->rect(), 20000*/);
+    if (e->type() == QEvent::HoverLeave)
+        m_isMouseOver = false;
+    if (e->type() == QEvent::HoverEnter || e->type() == QEvent::HoverMove)
+        m_isMouseOver = true;
+
+    return QChartView::eventFilter(object, e);
 }

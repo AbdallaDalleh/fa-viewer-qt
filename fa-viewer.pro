@@ -18,14 +18,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     chart.cpp \
     chartview.cpp \
-    fa_server.cpp \
     main.cpp \
     main_window.cpp
 
 HEADERS += \
     chart.h \
     chartview.h \
-    fa_server.h \
     main_window.h
 
 FORMS += \
