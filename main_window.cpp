@@ -68,7 +68,6 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     chart->legend()->show();
 
     chartView = new ChartView(chart);
-    // chartView->setChart(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->viewport()->setMouseTracking(true);
     ui->plot->layout()->addWidget(chartView);
@@ -246,19 +245,29 @@ void MainWindow::pollServer()
         std::transform(fft_raw_x.begin(), fft_raw_x.end(), fft_raw_x.begin(), square);
         std::transform(fft_raw_y.begin(), fft_raw_y.end(), fft_raw_y.begin(), square);
 
-        std::vector<int> gaps;
+        std::vector<int> gaps(this->samples / 2, 0);
         std::vector<int> diffs;
         double delta = pow(10, log10(this->samples/2 - 2)/(this->samples / 2 - 1));
-        for(int i = 0; i < (this->samples / 2); i++) {
-            gaps.push_back(pow(delta, i));
-        }
 
-        for(size_t i = 1; i < gaps.size(); i++) {
-            int diff = gaps[i] - gaps[i - 1];
-            if(diff > 0) {
-                diffs.push_back(diff);
-            }
-        }
+        int i = 0;
+        std::transform(gaps.begin(), gaps.end(), gaps.begin(), [delta, &i](int a) { Q_UNUSED(a); return pow(delta, i++); });
+
+        i = 0;
+        std::for_each(gaps.begin() + 1, gaps.end(), [&](int a) { int diff = a - *(gaps.begin() + i++); if ( diff > 0) diffs.push_back(diff); });
+
+//        std::transform(gaps.begin(), gaps.end(), gaps.begin() + 1, std::back_inserter(_diffs), [](int a, int b) { return b - a; });
+//        std::for_each(_diffs.begin(), _diffs.end(), [&](int a) { if (a > 0) diffs.push_back(a);});
+
+//        for(int i = 0; i < (this->samples / 2); i++) {
+//            gaps.push_back(pow(delta, i));
+//        }
+
+//        for(size_t i = 1; i < gaps.size(); i++) {
+//            int diff = gaps[i] - gaps[i - 1];
+//            if(diff > 0) {
+//                diffs.push_back(diff);
+//            }
+//        }
 
         int start = 0;
         int step = 0;
