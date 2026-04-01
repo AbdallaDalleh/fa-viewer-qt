@@ -534,18 +534,8 @@ void MainWindow::reconnectToServer()
 
 void MainWindow::on_cbShow_currentIndexChanged(int index)
 {
-    if(index == 0) {
-        x_series->setVisible(true);
-        y_series->setVisible(true);
-    }
-    else if(index == 1) {
-        x_series->setVisible(true);
-        y_series->setVisible(false);
-    }
-    else {
-        x_series->setVisible(false);
-        y_series->setVisible(true);
-    }
+    x_series->setVisible(index == 0 || index == 1);
+    y_series->setVisible(index == 0 || index == 2);
 }
 
 void MainWindow::on_cbTime_currentIndexChanged(int index)
