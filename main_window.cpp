@@ -550,9 +550,6 @@ void MainWindow::on_cbShow_currentIndexChanged(int index)
 
 void MainWindow::on_cbTime_currentIndexChanged(int index)
 {
-    QString item;
-    QStringList items;
-
     if(index < 3) {
         ui->cbDecimation->clear();
         if(ui->cbSignal->currentIndex() == MODE_RAW)
@@ -568,18 +565,8 @@ void MainWindow::on_cbTime_currentIndexChanged(int index)
         on_cbSignal_currentIndexChanged( ui->cbSignal->currentIndex() );
     }
 
-    item = ui->cbTime->currentText();
-    items = item.split(" ");
-    if(items[1] == "ms") {
-        // The 10 is equal to 10000/1000 (Convert to seconds and multiply by the FA rate 10KHz).
-        this->samples = items[0].toInt() * 10;
-        this->timerPeriod = items[0].toInt();
-    }
-    else {
-        this->samples = items[0].toDouble() * 10000;
-        this->timerPeriod = items[0].toDouble() * 1000;
-    }
-
+    this->samples = mSamples[index];
+    this->timerPeriod = mPeriods[index];
     this->bufferSize = this->samples * 2 * sizeof(float);
     this->timer->setInterval(this->timerPeriod);
 }

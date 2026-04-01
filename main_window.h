@@ -142,5 +142,8 @@ private:
     bool resetLogFilter;
     float logFilter;
     bool m_isTouching;
+    int mSamples[9] = {1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000};
+    int mPeriods[9] = {100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000};
+
 };
 #endif // MAINWINDOW_H
