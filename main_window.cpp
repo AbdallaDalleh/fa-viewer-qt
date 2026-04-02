@@ -214,24 +214,30 @@ void MainWindow::pollServer()
 //    else
 //        size += recv(sock, data, buffer, MSG_WAITALL);
 
-    while (size < bufferSize) {
-        size += read(sock, data + ptr, bufferSize);
-        ptr  += bufferSize;
-    }
-
     this->statusBar()->showMessage("FA Server Running ...");
+    std::cout << "Buffer: " << bufferSize << std::endl;
+    while (size < std::min<int>(MAX_BUFFER_SIZE, bufferSize)) {
+//        ssize_t bytes = read(sock, data + ptr, MIN_BUFFER_SIZE);
+        ssize_t bytes = recv(sock, data + ptr, MIN_BUFFER_SIZE, MSG_WAITALL);
+        ptr  += bytes;
 
-    for (i = 0; size > 27 && i < size; i += 8) {
-        memcpy(&raw_x, data + i, sizeof(int32_t));
-        memcpy(&raw_y, data + i + 4, sizeof(int32_t));
+        for (i = 0; bytes > 27 && i < bytes; i += 8) {
+            memcpy(&raw_x, data + i, sizeof(int32_t));
+            memcpy(&raw_y, data + i + 4, sizeof(int32_t));
 
-        value_x = (raw_x) / 1000.0;
-        value_y = (raw_y) / 1000.0;
-//        data_x.push_back(value_x);
-//        data_y.push_back(value_y);
-        bufferX.push_back(value_x);
-        bufferY.push_back(value_y);
+            value_x = (raw_x) / 1000.0;
+            value_y = (raw_y) / 1000.0;
+    //        data_x.push_back(value_x);
+    //        data_y.push_back(value_y);
+            bufferX.push_back(value_x);
+            bufferY.push_back(value_y);
+        }
+        size += bytes;
     }
+
+    std::cout << this->samples << std::endl;
+    std::copy(bufferX.end() - this->samples, bufferX.end(), std::back_inserter(data_x));
+    std::copy(bufferY.end() - this->samples, bufferY.end(), std::back_inserter(data_y));
 
     auto compare_zero = [](float i){ return i == 0.0; };
     auto square_root_float = [](float a){ return sqrt(a / 10.0); };
@@ -475,7 +481,7 @@ void MainWindow::pollServer()
             std::tie(min, max) = calculateLimits(item_x, item_y, min, max);
         }
 
-        modifyAxes({xAxis, yAxis}, {xLogAxis, yLogAxis}, {0, timerPeriod}, {min, max}, {"Time (ms)", "Positions (um)"});
+        modifyAxes({xAxis, yAxis}, {xLogAxis, yLogAxis}, {0, this->samples / 10.0}, {min, max}, {"Time (ms)", "Positions (um)"});
     }
 
     this->x_series->replace(xData);
@@ -487,7 +493,7 @@ void MainWindow::pollServer()
     else
         QToolTip::hideText();
 
-    delete[] data;
+//    delete[] data;
 }
 
 void MainWindow::on_cbCells_currentIndexChanged(int index)
@@ -570,7 +576,7 @@ void MainWindow::on_cbTime_currentIndexChanged(int index)
 
 void MainWindow::on_cbSignal_currentIndexChanged(int index)
 {
-    ui->cbTime->setCurrentIndex(3);
+    // ui->cbTime->setCurrentIndex(3);
     if(index == MODE_RAW) {
         ui->cbDecimation->show();
         ui->cbDecimation->clear();

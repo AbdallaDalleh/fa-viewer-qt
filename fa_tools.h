@@ -3,17 +3,12 @@
 
 #include <array>
 #include <iterator>
+#include <iostream>
 
 namespace fa
 {
 
-#ifndef FA_BUFFER_SIZE
-#define SAMPLES 50000
-#else
-#define SAMPLES FA_BUFFER_SIZE
-#endif
-
-template <typename T>
+template <typename T, size_t N>
 class buffer
 {
 public:
@@ -33,7 +28,13 @@ public:
 
         buffer_iterator& operator+(int n)
         {
-            m_ptr += n;
+            m_ptr += n % N;
+            return *this;
+        }
+
+        buffer_iterator& operator-(int n)
+        {
+            m_ptr -= n;
             return *this;
         }
 
@@ -66,13 +67,14 @@ public:
         pointer m_ptr;
     };
 
-    buffer_iterator begin() { return buffer_iterator(&_data[0]); }
-    buffer_iterator end()   { return buffer_iterator(&_data[SAMPLES]); }
+    buffer_iterator begin() { return buffer_iterator(&_data[head]); }
+    buffer_iterator end()   { return buffer_iterator(&_data[head + count]); }
 
     explicit buffer()
     {
-        _data = {0};
+        _data.fill(0);
         head = 0;
+        tail = 0;
         count = 0;
     }
 
@@ -83,7 +85,7 @@ public:
 
     inline bool full() const
     {
-        return count == SAMPLES;
+        return count == N;
     }
 
     inline bool empty() const
@@ -96,23 +98,31 @@ public:
         return count;
     }
 
-    void push_back(T value)
+    inline int start() const
     {
-        _data[head] = value;
-        _data[head + SAMPLES] = value;
-        if (count != SAMPLES)
-            count++;
-        head = (head + 1) % SAMPLES;
+        return head;
     }
 
-    T* data() const
+    void push_back(T value)
+    {
+        _data[tail] = value;
+        _data[tail + N] = value;
+        tail = (tail + 1) % N;
+        if (count != N)
+            count++;
+        else
+            head = (head + 1) % N;
+    }
+
+    const T* data() const
     {
         return &_data[head];
     }
 
 private:
-    std::array<T, SAMPLES * 2> _data;
+    std::array<T, N * 2> _data;
     size_t head;
+    size_t tail;
     size_t count;
 };
 
