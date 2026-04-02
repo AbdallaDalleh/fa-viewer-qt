@@ -31,6 +31,12 @@ public:
         reference operator*() const { return *m_ptr; }
         pointer   operator->()      { return  m_ptr; }
 
+        buffer_iterator& operator+(int n)
+        {
+            m_ptr += n;
+            return *this;
+        }
+
         // Prefix increment
         buffer_iterator& operator++()
         {
@@ -39,7 +45,7 @@ public:
         }
 
         // Postfix increment
-        buffer_iterator operator++(int)
+        buffer_iterator& operator++(int)
         {
             buffer_iterator temp = *this;
             ++(*this);
