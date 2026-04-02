@@ -35,10 +35,12 @@ using std::endl;
 
 #include <chart.h>
 #include <chartview.h>
+#include <fa_tools.h>
 
 using namespace QT_CHARTS_NAMESPACE;
 
 #define MAX_BUFFER_SIZE (80000)
+#define MIN_BUFFER_SIZE (8000)
 
 #define MODE_RAW            0
 #define MODE_FFT            1
@@ -112,6 +114,9 @@ private:
     Chart* chart;
     ChartView* chartView;
 
+    fa::buffer<float> bufferX;
+    fa::buffer<float> bufferY;
+
     QLineSeries* x_series;
     QLineSeries* y_series;
     QValueAxis* xAxis;
@@ -142,8 +147,8 @@ private:
     bool resetLogFilter;
     float logFilter;
     bool m_isTouching;
-    int mSamples[9] = {1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000};
-    int mPeriods[9] = {100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000};
+    int mSamples[9] = {1000, 2500, 5000, 10000, 10000, 10000, 10000, 10000, 10000};
+    int mPeriods[9] = {100, 250, 500, 1000, 1000, 1000, 1000, 1000, 1000};
 
 };
 #endif // MAINWINDOW_H

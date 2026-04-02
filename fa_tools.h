@@ -2,6 +2,10 @@
 #define FA_TOOLS_H
 
 #include <array>
+#include <iterator>
+
+namespace fa
+{
 
 #ifndef FA_BUFFER_SIZE
 #define SAMPLES 50000
@@ -9,13 +13,56 @@
 #define SAMPLES FA_BUFFER_SIZE
 #endif
 
-namespace fa
-{
-
 template <typename T>
 class buffer
 {
 public:
+    struct buffer_iterator
+    {
+        // Iterator tags
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = T;
+        using pointer           = value_type*;
+        using reference         = value_type&;
+
+        buffer_iterator(pointer ptr) : m_ptr(ptr) {}
+
+        reference operator*() const { return *m_ptr; }
+        pointer   operator->()      { return  m_ptr; }
+
+        // Prefix increment
+        buffer_iterator& operator++()
+        {
+            m_ptr++;
+            return *this;
+        }
+
+        // Postfix increment
+        buffer_iterator operator++(int)
+        {
+            buffer_iterator temp = *this;
+            ++(*this);
+            return temp;
+        }
+
+        friend bool operator==(const buffer_iterator& a, const buffer_iterator& b)
+        {
+            return a.m_ptr == b.m_ptr;
+        }
+
+        friend bool operator!=(const buffer_iterator& a, const buffer_iterator& b)
+        {
+            return a.m_ptr != b.m_ptr;
+        }
+
+    private:
+        pointer m_ptr;
+    };
+
+    buffer_iterator begin() { return buffer_iterator(&_data[0]); }
+    buffer_iterator end()   { return buffer_iterator(&_data[SAMPLES]); }
+
     explicit buffer()
     {
         _data = {0};

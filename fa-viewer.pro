@@ -24,6 +24,7 @@ SOURCES += \
 HEADERS += \
     chart.h \
     chartview.h \
+    fa_tools.h \
     main_window.h
 
 FORMS += \

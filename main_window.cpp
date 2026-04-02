@@ -170,7 +170,7 @@ void MainWindow::pollServer()
     float value_y;
     float min;
     float max;
-    char* data;
+    char data[MAX_BUFFER_SIZE];
     QVector<QPointF> xData;
     QVector<QPointF> yData;
     std::vector<float> data_x;
@@ -185,7 +185,7 @@ void MainWindow::pollServer()
         return;
     }
 
-    data = new char[bufferSize];
+//    data = new char[bufferSize];
     this->x_series->clear();
     this->y_series->clear();
     max = std::numeric_limits<float>::min();
@@ -202,17 +202,22 @@ void MainWindow::pollServer()
         return;
     }
 
-    int buffer = bufferSize;
+//    int buffer = bufferSize;
     int ptr = 0;
-    if(buffer > MAX_BUFFER_SIZE) {
-        while(buffer > 0) {
-            size += recv(sock, data + ptr, buffer < MAX_BUFFER_SIZE ? buffer : MAX_BUFFER_SIZE, MSG_WAITALL);
-            buffer -= MAX_BUFFER_SIZE;
-            ptr += MAX_BUFFER_SIZE;
-        }
+//    if(buffer > MAX_BUFFER_SIZE) {
+//        while(buffer > 0) {
+//            size += recv(sock, data + ptr, buffer < MAX_BUFFER_SIZE ? buffer : MAX_BUFFER_SIZE, MSG_WAITALL);
+//            buffer -= MAX_BUFFER_SIZE;
+//            ptr += MAX_BUFFER_SIZE;
+//        }
+//    }
+//    else
+//        size += recv(sock, data, buffer, MSG_WAITALL);
+
+    while (size < bufferSize) {
+        size += read(sock, data + ptr, bufferSize);
+        ptr  += bufferSize;
     }
-    else
-        size += recv(sock, data, buffer, MSG_WAITALL);
 
     this->statusBar()->showMessage("FA Server Running ...");
 
@@ -222,8 +227,10 @@ void MainWindow::pollServer()
 
         value_x = (raw_x) / 1000.0;
         value_y = (raw_y) / 1000.0;
-        data_x.push_back(value_x);
-        data_y.push_back(value_y);
+//        data_x.push_back(value_x);
+//        data_y.push_back(value_y);
+        bufferX.push_back(value_x);
+        bufferY.push_back(value_y);
     }
 
     auto compare_zero = [](float i){ return i == 0.0; };
