@@ -15,7 +15,7 @@ public:
     struct buffer_iterator
     {
         // Iterator tags
-        using iterator_category = std::forward_iterator_tag;
+        using iterator_category = std::random_access_iterator_tag;
         using difference_type   = std::ptrdiff_t;
         using value_type        = T;
         using pointer           = value_type*;
@@ -23,19 +23,19 @@ public:
 
         buffer_iterator(pointer ptr) : m_ptr(ptr) {}
 
-        reference operator*() const { return *m_ptr; }
-        pointer   operator->()      { return  m_ptr; }
+        reference operator*()  const { return *m_ptr; }
+        pointer   operator->() const { return  m_ptr; }
 
-        buffer_iterator operator+(difference_type n)
+        buffer_iterator operator+(difference_type n) const
         {
             buffer_iterator temp = *this;
             temp += n;
             return temp;
         }
 
-        friend difference_type operator-(buffer_iterator& a, const buffer_iterator& b)
+        difference_type operator-(buffer_iterator& a)
         {
-            return a.m_ptr - b.m_ptr;
+            return m_ptr - a.m_ptr;
         }
 
         buffer_iterator operator-(difference_type n) const
@@ -43,9 +43,15 @@ public:
             return buffer_iterator(m_ptr - n);
         }
 
-        buffer_iterator& operator-=(int n)
+        buffer_iterator& operator-=(difference_type n)
         {
             m_ptr -= n;
+            return *this;
+        }
+
+        buffer_iterator& operator+=(int n)
+        {
+            m_ptr += n;
             return *this;
         }
 
@@ -57,7 +63,7 @@ public:
         }
 
         // Postfix increment
-        buffer_iterator& operator++(int)
+        buffer_iterator operator++(int)
         {
             buffer_iterator temp = *this;
             ++(*this);
@@ -78,8 +84,8 @@ public:
         pointer m_ptr;
     };
 
-    buffer_iterator begin() { return buffer_iterator(_data.data() + head); }
-    buffer_iterator end()   { return buffer_iterator(_data.data() + head + count); }
+    buffer_iterator begin() const { return buffer_iterator(_data.data() + head); }
+    buffer_iterator end()   const { return buffer_iterator(_data.data() + head + count); }
 
     explicit buffer() : head{0}, tail{0}, count{0}
     {
@@ -87,7 +93,7 @@ public:
         // std::fill(_data.begin(), _data.end(), 0);
     }
 
-    T operator[](size_t i) const
+    const T& operator[](size_t i) const
     {
         return _data[i];
     }
