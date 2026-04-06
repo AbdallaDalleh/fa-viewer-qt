@@ -1,7 +1,7 @@
 #ifndef FA_TOOLS_H
 #define FA_TOOLS_H
 
-#include <array>
+#include <vector>
 #include <iterator>
 #include <iostream>
 
@@ -32,11 +32,23 @@ public:
             return *this;
         }
 
-        buffer_iterator& operator-(int n)
+        buffer_iterator operator-(difference_type n) const
+        {
+            return buffer_iterator(m_ptr - n);
+        }
+
+        friend difference_type operator-(const buffer_iterator& a, const buffer_iterator& b)
+        {
+            return a.m_ptr - b.m_ptr;
+        }
+
+        buffer_iterator& operator-=(int n)
         {
             m_ptr -= n;
             return *this;
         }
+
+        // friend difference_type operator
 
         // Prefix increment
         buffer_iterator& operator++()
@@ -67,15 +79,13 @@ public:
         pointer m_ptr;
     };
 
-    buffer_iterator begin() { return buffer_iterator(&_data[head]); }
-    buffer_iterator end()   { return buffer_iterator(&_data[head + count]); }
+    buffer_iterator begin() { return buffer_iterator(_data.data() + head); }
+    buffer_iterator end()   { return buffer_iterator(_data.data() + head + count); }
 
-    explicit buffer()
+    explicit buffer() : head{0}, tail{0}, count{0}
     {
-        _data.fill(0);
-        head = 0;
-        tail = 0;
-        count = 0;
+        _data.reserve(N * 2);
+        std::fill(_data.begin(), _data.end(), 0);
     }
 
     T operator[](size_t i) const
@@ -120,7 +130,7 @@ public:
     }
 
 private:
-    std::array<T, N * 2> _data;
+    std::vector<T> _data;
     size_t head;
     size_t tail;
     size_t count;
