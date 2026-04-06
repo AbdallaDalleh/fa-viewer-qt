@@ -203,7 +203,7 @@ void MainWindow::pollServer()
     }
 
 //    int buffer = bufferSize;
-    int ptr = 0;
+//    int ptr = 0;
 //    if(buffer > MAX_BUFFER_SIZE) {
 //        while(buffer > 0) {
 //            size += recv(sock, data + ptr, buffer < MAX_BUFFER_SIZE ? buffer : MAX_BUFFER_SIZE, MSG_WAITALL);
@@ -215,29 +215,21 @@ void MainWindow::pollServer()
 //        size += recv(sock, data, buffer, MSG_WAITALL);
 
     this->statusBar()->showMessage("FA Server Running ...");
-    std::cout << "Buffer: " << bufferSize << std::endl;
-    while (size < std::min<int>(MAX_BUFFER_SIZE, bufferSize)) {
-//        ssize_t bytes = read(sock, data + ptr, MIN_BUFFER_SIZE);
-        ssize_t bytes = recv(sock, data + ptr, MIN_BUFFER_SIZE, MSG_WAITALL);
-        ptr  += bytes;
+    ssize_t bytes = read(sock, data, std::min<int>(MAX_BUFFER_SIZE, bufferSize));
+    for (i = 0; bytes > 27 && i < bytes; i += 8) {
+        memcpy(&raw_x, data + i, sizeof(int32_t));
+        memcpy(&raw_y, data + i + 4, sizeof(int32_t));
 
-        for (i = 0; bytes > 27 && i < bytes; i += 8) {
-            memcpy(&raw_x, data + i, sizeof(int32_t));
-            memcpy(&raw_y, data + i + 4, sizeof(int32_t));
-
-            value_x = (raw_x) / 1000.0;
-            value_y = (raw_y) / 1000.0;
-    //        data_x.push_back(value_x);
-    //        data_y.push_back(value_y);
-            bufferX.push_back(value_x);
-            bufferY.push_back(value_y);
-        }
-        size += bytes;
+        value_x = (raw_x) / 1000.0;
+        value_y = (raw_y) / 1000.0;
+        // data_x.push_back(value_x);
+        // data_y.push_back(value_y);
+        bufferX.push_back(value_x);
+        bufferY.push_back(value_y);
     }
 
-    std::cout << this->samples << std::endl;
-    std::copy(bufferX.end() - this->samples, bufferX.end(), std::back_inserter(data_x));
-    std::copy(bufferY.end() - this->samples, bufferY.end(), std::back_inserter(data_y));
+    std::copy(bufferX.end() - std::min<int>(this->samples, bufferX.size()), bufferX.end(), std::back_inserter(data_x));
+    std::copy(bufferY.end() - std::min<int>(this->samples, bufferY.size()), bufferY.end(), std::back_inserter(data_y));
 
     auto compare_zero = [](float i){ return i == 0.0; };
     auto square_root_float = [](float a){ return sqrt(a / 10.0); };

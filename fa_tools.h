@@ -26,10 +26,16 @@ public:
         reference operator*() const { return *m_ptr; }
         pointer   operator->()      { return  m_ptr; }
 
-        buffer_iterator& operator+(int n)
+        buffer_iterator operator+(difference_type n)
         {
-            m_ptr += n % N;
-            return *this;
+            buffer_iterator temp = *this;
+            temp += n;
+            return temp;
+        }
+
+        friend difference_type operator-(buffer_iterator& a, const buffer_iterator& b)
+        {
+            return a.m_ptr - b.m_ptr;
         }
 
         buffer_iterator operator-(difference_type n) const
@@ -37,18 +43,11 @@ public:
             return buffer_iterator(m_ptr - n);
         }
 
-        friend difference_type operator-(const buffer_iterator& a, const buffer_iterator& b)
-        {
-            return a.m_ptr - b.m_ptr;
-        }
-
         buffer_iterator& operator-=(int n)
         {
             m_ptr -= n;
             return *this;
         }
-
-        // friend difference_type operator
 
         // Prefix increment
         buffer_iterator& operator++()
@@ -84,8 +83,8 @@ public:
 
     explicit buffer() : head{0}, tail{0}, count{0}
     {
-        _data.reserve(N * 2);
-        std::fill(_data.begin(), _data.end(), 0);
+        _data.resize(N * 2, 0);
+        // std::fill(_data.begin(), _data.end(), 0);
     }
 
     T operator[](size_t i) const
