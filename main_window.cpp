@@ -173,8 +173,6 @@ void MainWindow::pollServer()
     char data[MAX_BUFFER_SIZE];
     QVector<QPointF> xData;
     QVector<QPointF> yData;
-    std::vector<float> data_x;
-    std::vector<float> data_y;
     std::vector<float> fft_x;
     std::vector<float> fft_y;
     struct pollfd fds[1];
@@ -228,8 +226,12 @@ void MainWindow::pollServer()
         bufferY.push_back(value_y);
     }
 
-    std::copy(bufferX.end() - std::min<int>(this->samples, bufferX.size()), bufferX.end(), std::back_inserter(data_x));
-    std::copy(bufferY.end() - std::min<int>(this->samples, bufferY.size()), bufferY.end(), std::back_inserter(data_y));
+    int xIndex = std::min<int>(this->samples, bufferX.size());
+    int yIndex = std::min<int>(this->samples, bufferY.size());
+    std::vector<float> data_x(this->samples - xIndex, 0);
+    std::vector<float> data_y(this->samples - yIndex, 0);
+    std::copy(bufferX.end() - xIndex, bufferX.end(), std::back_inserter(data_x));
+    std::copy(bufferY.end() - yIndex, bufferY.end(), std::back_inserter(data_y));
 
     auto compare_zero = [](float i){ return i == 0.0; };
     auto square_root_float = [](float a){ return sqrt(a / 10.0); };

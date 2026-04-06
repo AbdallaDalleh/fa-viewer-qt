@@ -24,7 +24,7 @@ public:
         buffer_iterator(pointer ptr) : m_ptr(ptr) {}
 
         reference operator*()  const { return *m_ptr; }
-        pointer   operator->() const { return  m_ptr; }
+        pointer   operator->() { return  m_ptr; }
 
         buffer_iterator operator+(difference_type n) const
         {
@@ -84,8 +84,8 @@ public:
         pointer m_ptr;
     };
 
-    buffer_iterator begin() const { return buffer_iterator(_data.data() + head); }
-    buffer_iterator end()   const { return buffer_iterator(_data.data() + head + count); }
+    buffer_iterator begin() { return buffer_iterator(_data.data() + head); }
+    buffer_iterator end() { return buffer_iterator(_data.data() + head + count); }
 
     explicit buffer() : head{0}, tail{0}, count{0}
     {
