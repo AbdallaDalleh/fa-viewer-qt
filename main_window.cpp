@@ -162,7 +162,6 @@ MainWindow::~MainWindow()
 void MainWindow::pollServer()
 {
     int i = 0;
-    int size = 0;
     int decimation_factor = 1;
     int32_t raw_x = 0;
     int32_t raw_y = 0;

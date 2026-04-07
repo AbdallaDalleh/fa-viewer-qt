@@ -24,61 +24,33 @@ public:
         buffer_iterator(pointer ptr) : m_ptr(ptr) {}
 
         reference operator*()  const { return *m_ptr; }
-        pointer   operator->() { return  m_ptr; }
+        pointer   operator->() const { return  m_ptr; }
 
-        buffer_iterator operator+(difference_type n) const
-        {
-            buffer_iterator temp = *this;
-            temp += n;
-            return temp;
-        }
+        reference operator[] (difference_type n) const { return *(m_ptr + n); }
 
-        difference_type operator-(buffer_iterator& a)
-        {
-            return m_ptr - a.m_ptr;
-        }
+        difference_type operator-(buffer_iterator& a) const { return m_ptr - a.m_ptr; }
+        difference_type operator+(buffer_iterator& a) const { return m_ptr + a.m_ptr; }
 
-        buffer_iterator operator-(difference_type n) const
-        {
-            return buffer_iterator(m_ptr - n);
-        }
+        buffer_iterator operator-(difference_type n)  const { return {m_ptr - n}; }
+        buffer_iterator operator+(difference_type n)  const { return {m_ptr + n}; }
 
-        buffer_iterator& operator-=(difference_type n)
-        {
-            m_ptr -= n;
-            return *this;
-        }
+        buffer_iterator& operator-=(difference_type n) { m_ptr -= n; return *this; }
+        buffer_iterator& operator+=(difference_type n) { m_ptr += n; return *this; }
 
-        buffer_iterator& operator+=(int n)
-        {
-            m_ptr += n;
-            return *this;
-        }
+        // Prefix increment/decrement
+        buffer_iterator& operator++() { m_ptr++; return *this; }
+        buffer_iterator& operator--() { m_ptr--; return *this; }
 
-        // Prefix increment
-        buffer_iterator& operator++()
-        {
-            m_ptr++;
-            return *this;
-        }
+        // Postfix increment/decrement
+        buffer_iterator operator++(int) { buffer_iterator temp = *this; ++(*this); return temp; }
+        buffer_iterator operator--(int) { buffer_iterator temp = *this; --(*this); return temp; }
 
-        // Postfix increment
-        buffer_iterator operator++(int)
-        {
-            buffer_iterator temp = *this;
-            ++(*this);
-            return temp;
-        }
-
-        friend bool operator==(const buffer_iterator& a, const buffer_iterator& b)
-        {
-            return a.m_ptr == b.m_ptr;
-        }
-
-        friend bool operator!=(const buffer_iterator& a, const buffer_iterator& b)
-        {
-            return a.m_ptr != b.m_ptr;
-        }
+        bool operator == (const buffer_iterator& a) const { return m_ptr == a.m_ptr; }
+        bool operator != (const buffer_iterator& a) const { return m_ptr != a.m_ptr; }
+        bool operator <  (const buffer_iterator& a) const { return m_ptr <  a.m_ptr; }
+        bool operator >  (const buffer_iterator& a) const { return m_ptr >  a.m_ptr; }
+        bool operator <= (const buffer_iterator& a) const { return m_ptr <= a.m_ptr; }
+        bool operator >= (const buffer_iterator& a) const { return m_ptr >= a.m_ptr; }
 
     private:
         pointer m_ptr;
@@ -90,10 +62,9 @@ public:
     explicit buffer() : head{0}, tail{0}, count{0}
     {
         _data.resize(N * 2, 0);
-        // std::fill(_data.begin(), _data.end(), 0);
     }
 
-    const T& operator[](size_t i) const
+    T& operator[](size_t i) const
     {
         return _data[i];
     }
