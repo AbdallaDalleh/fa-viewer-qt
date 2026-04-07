@@ -64,30 +64,15 @@ public:
         _data.resize(N * 2, 0);
     }
 
-    T& operator[](size_t i) const
-    {
-        return _data[i];
-    }
+    T& operator[](size_t i) { return _data[i]; }
 
-    inline bool full() const
-    {
-        return count == N;
-    }
+    inline T& front() const { return _data[head]; }
+    inline T& back()  const { return _data[tail]; }
 
-    inline bool empty() const
-    {
-        return count == 0;
-    }
-
-    inline size_t size() const
-    {
-        return count;
-    }
-
-    inline int start() const
-    {
-        return head;
-    }
+    inline bool full() const { return count == N; }
+    inline bool empty() const { return count == 0; }
+    inline size_t size() const { return count; }
+    inline size_t capacity() const { return N; }
 
     void push_back(T value)
     {
