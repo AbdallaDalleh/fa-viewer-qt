@@ -68,7 +68,7 @@ MainWindow::MainWindow(QString configFile, QWidget *parent)
     chart->legend()->show();
 
     chartView = new ChartView(chart);
-    chartView->setRenderHint(QPainter::Antialiasing);
+    // chartView->setRenderHint(QPainter::Antialiasing);
     chartView->viewport()->setMouseTracking(true);
     ui->plot->layout()->addWidget(chartView);
 
@@ -199,18 +199,6 @@ void MainWindow::pollServer()
         return;
     }
 
-//    int buffer = bufferSize;
-//    int ptr = 0;
-//    if(buffer > MAX_BUFFER_SIZE) {
-//        while(buffer > 0) {
-//            size += recv(sock, data + ptr, buffer < MAX_BUFFER_SIZE ? buffer : MAX_BUFFER_SIZE, MSG_WAITALL);
-//            buffer -= MAX_BUFFER_SIZE;
-//            ptr += MAX_BUFFER_SIZE;
-//        }
-//    }
-//    else
-//        size += recv(sock, data, buffer, MSG_WAITALL);
-
     this->statusBar()->showMessage("FA Server Running ...");
     ssize_t bytes = read(sock, data, std::min<int>(MAX_BUFFER_SIZE, bufferSize));
     for (i = 0; bytes > 27 && i < bytes; i += 8) {
@@ -219,8 +207,6 @@ void MainWindow::pollServer()
 
         value_x = (raw_x) / 1000.0;
         value_y = (raw_y) / 1000.0;
-        // data_x.push_back(value_x);
-        // data_y.push_back(value_y);
         bufferX.push_back(value_x);
         bufferY.push_back(value_y);
     }
