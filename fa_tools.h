@@ -4,6 +4,7 @@
 #include <vector>
 #include <iterator>
 #include <iostream>
+#include <memory>
 
 namespace fa
 {
@@ -60,15 +61,15 @@ public:
     using buffer_iterator = buffer_iterator_base<T>;
     using const_buffer_iterator = buffer_iterator_base<const T>;
 
-    buffer_iterator begin() { return buffer_iterator(_data.data() + head); }
-    buffer_iterator end()   { return buffer_iterator(_data.data() + head + count); }
+    buffer_iterator begin() { return buffer_iterator(_data.get() + head); }
+    buffer_iterator end()   { return buffer_iterator(_data.get() + head + count); }
 
-    const_buffer_iterator cbegin() const { return const_buffer_iterator(_data.data() + head); }
-    const_buffer_iterator cend()   const { return const_buffer_iterator(_data.data() + head + count); }
+    const_buffer_iterator cbegin() const { return const_buffer_iterator(_data.get() + head); }
+    const_buffer_iterator cend()   const { return const_buffer_iterator(_data.get() + head + count); }
 
     explicit buffer() : head{0}, tail{0}, count{0}
     {
-        _data.resize(N * 2, 0);
+        _data = std::unique_ptr<T[]>(new T[N * 2]());
     }
 
     T& operator[](size_t i) { return _data[i]; }
@@ -92,13 +93,11 @@ public:
             head = (head + 1) % N;
     }
 
-    const T* data() const
-    {
-        return &_data[head];
-    }
+    const T* data() const { return &_data[head]; }
+    const T* get()  const { return _data.get(); }
 
 private:
-    std::vector<T> _data;
+    std::unique_ptr<T[]> _data;
     size_t head;
     size_t tail;
     size_t count;
