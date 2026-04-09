@@ -167,8 +167,8 @@ void MainWindow::pollServer()
     int32_t raw_y = 0;
     float value_x;
     float value_y;
-    float min;
-    float max;
+    float min = std::numeric_limits<float>::max();;
+    float max = std::numeric_limits<float>::min();;
     char data[MAX_BUFFER_SIZE];
     QVector<QPointF> xData;
     QVector<QPointF> yData;
@@ -182,11 +182,8 @@ void MainWindow::pollServer()
         return;
     }
 
-//    data = new char[bufferSize];
     this->x_series->clear();
     this->y_series->clear();
-    max = std::numeric_limits<float>::min();
-    min = std::numeric_limits<float>::max();
 
     fds[0].fd = this->sock;
     fds[0].events = POLLIN;
@@ -219,7 +216,6 @@ void MainWindow::pollServer()
     std::copy(bufferY.end() - yIndex, bufferY.end(), std::back_inserter(data_y));
 
     auto compare_zero = [](float i){ return i == 0.0; };
-    auto square_root_float = [](float a){ return sqrt(a / 10.0); };
     auto square = [](float a){ return a * a; };
     auto sum = [](float a, float b) { return a*a + b; };
 
@@ -314,6 +310,8 @@ void MainWindow::pollServer()
     }
     else if(ui->cbSignal->currentIndex() == MODE_FFT) {
         if(ui->cbDecimation->currentIndex() == FFT_1_1) {
+            fft_x.reserve(data_x.size() / 2);
+            fft_y.reserve(data_y.size() / 2);
             computeFFT(data_x, data_y, fft_x, fft_y);
         }
         else { // FFT_10_1
@@ -333,12 +331,8 @@ void MainWindow::pollServer()
                 std::transform(fft_mag_y.begin(), fft_mag_y.end(), sum_y.begin(), sum_y.begin(), sum);
             }
 
-            fft_x.clear();
-            fft_y.clear();
-            for(auto item : sum_x)
-                fft_x.push_back(square_root_float(item));
-            for(auto item : sum_y)
-                fft_y.push_back(square_root_float(item));
+            std::transform(std::begin(sum_x), std::end(sum_x), std::back_inserter(fft_x), [](float item) { return std::sqrt(item / 10.0); });
+            std::transform(std::begin(sum_y), std::end(sum_y), std::back_inserter(fft_y), [](float item) { return std::sqrt(item / 10.0); });
         }
 
         for(int i = 0; i < (int)fft_x.size(); i++) {
@@ -664,8 +658,6 @@ void MainWindow::computeFFT(std::vector<float> &data_x, std::vector<float> &data
     cv::dft(data_x, data_x);
     cv::dft(data_y, data_y);
 
-    fft_x.clear();
-    fft_y.clear();
     fft_x.push_back(abs(data_x[0]) * sqrt(2 / (this->samplingFrequency * samples)));
     fft_y.push_back(abs(data_y[0]) * sqrt(2 / (this->samplingFrequency * samples)));
     for(int i = 1; i < qMin<int>(data_x.size(), data_y.size()) - 2; i += 2) {
